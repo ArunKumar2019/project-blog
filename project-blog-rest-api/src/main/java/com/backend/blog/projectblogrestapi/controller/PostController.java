@@ -20,8 +20,11 @@ public class PostController {
     }
 
     @GetMapping
-    public ResponseEntity<List<PostDTO>> getAllPosts(){
-        return new ResponseEntity<>(postService.getAllPosts(),HttpStatus.OK);
+    public ResponseEntity<List<PostDTO>> getAllPosts(
+            @RequestParam(value = "pageNo" ,defaultValue = "0",required = false) int pageNo,
+            @RequestParam(value = "pageSize",defaultValue = "10",required = false) int pageSize
+    ){
+        return new ResponseEntity<>(postService.getAllPosts(pageNo,pageSize),HttpStatus.OK);
     }
 
     @GetMapping("/{id}")
@@ -37,6 +40,6 @@ public class PostController {
     @DeleteMapping("/{id}")
     public ResponseEntity<String> deletePostById(@PathVariable (name = "id") long id){
         postService.deletePostById(id);
-        return new ResponseEntity<>("Post is Deleted Succesfully",HttpStatus.OK);
+        return new ResponseEntity<>("Post is Deleted Successfully",HttpStatus.OK);
     }
 }
