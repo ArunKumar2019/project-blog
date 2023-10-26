@@ -1,12 +1,11 @@
 package com.backend.blog.projectblogrestapi.service;
 
 import com.backend.blog.projectblogrestapi.dtoClasses.PostDTO;
-
-import java.util.List;
+import com.backend.blog.projectblogrestapi.dtoClasses.PostResponse;
 
 public interface PostService {
     PostDTO createPost(PostDTO postDTO);
-    List<PostDTO> getAllPosts(int pageNo,int pageSize);
+    PostResponse getAllPosts(int pageNo, int pageSize, String sortBy, String sortDir);
     PostDTO getPostById(long id);
     PostDTO updatePost(PostDTO postDTO,long id);
     void deletePostById(long id);

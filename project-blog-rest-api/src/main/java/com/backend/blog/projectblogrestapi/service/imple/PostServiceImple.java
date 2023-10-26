@@ -10,9 +10,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
-import java.math.BigInteger;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -34,9 +34,10 @@ public class PostServiceImple implements PostService {
     }
 
     @Override
-    public List<PostDTO> getAllPosts(int pageNo,int pageSize) {
+    public PostResponse getAllPosts(int pageNo, int pageSize, String sortBy, String sortDir) {
 //        create pageable instance
-        Pageable pageable= PageRequest.of(pageNo,pageSize);
+        Sort sort=sortDir.equalsIgnoreCase(Sort.Direction.ASC.name()) ? Sort.by(sortBy).ascending() :Sort.by(sortBy).descending();
+        Pageable pageable= PageRequest.of(pageNo,pageSize, sort);
         Page<Post> getAll=postRepository.findAll(pageable);
 //        get the content for page object
         List<Post> listOfposts=getAll.getContent();
@@ -48,7 +49,7 @@ public class PostServiceImple implements PostService {
         postResponse.setTotalElement(getAll.getTotalElements());
         postResponse.setTotalPage(getAll.getTotalPages());
         postResponse.setLast(getAll.isLast());
-        return content;
+        return postResponse;
     }
 
     @Override
