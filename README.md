@@ -264,4 +264,92 @@ ORDER BY
     MTN ASC, 
     EFF_DT ASC
 FETCH FIRST 100 ROWS ONLY;
+===================================================================================================================================================
+
+SELECT DISTINCT 
+    COALESCE(iln.CUST_ID_NO, cc.CUST_ID_NO) AS CUST_ID_NO, 
+    COALESCE(iln.ACCT_NO, cc.ACCT_NO) AS ACCT_NO, 
+    COALESCE(iln.OUTLET_ID, cc.OUTLET_ID) AS OUTLET_ID,
+    iln.INSTALL_LOAN_NO, 
+    iln.LOAN_SYS_CRT_DT, 
+    COALESCE(iln.MTN, cc.MTN) AS MTN, 
+    COALESCE(iln.MTN_EFF_DT, cc.MTN_EFF_DT) AS MTN_EFF_DT, 
+    ils.LN_ST_LOAN_STAT_EFF_TS, 
+    'UDP' AS STATUS_TYPE, 
+    cc.EFF_DT, 
+    cc.SLS_REP_ID, 
+    cc.U2C_STATUS
+FROM (
+    -- Primary query (for UDP data)
+    SELECT 
+        iln.install_loan_no, 
+        iln.loan_sys_crt_dt, 
+        iln.outlet_id, 
+        iln.cust_id_no, 
+        iln.acct_no, 
+        iln.mtn, 
+        iln.mtn_eff_dt, 
+        ils.ln_st_loan_stat_eff_ts, 
+        'UDP' AS STATUS_TYPE
+    FROM INSTALLMENT_LOAN_LOAN_NO iln
+    LEFT JOIN INSTALLMENT_LOAN_STATUS ils 
+        ON iln.INSTALL_LOAN_NO = ils.INSTALL_LOAN_NO
+    WHERE iln.LOAN_SYS_CRT_DT < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+      AND iln.LOAN_SYS_CRT_DT > (
+          SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'DD/MM/YYYY'), 'YYYY-MM-DD')
+          FROM CMN_BATCH_PARMS
+          WHERE CMN_PARM_GRP_ID = 'EPCA' 
+            AND CMN_PARM_ENT_ID = 'UDPDT'
+            AND CMN_PARM_SEQ_NO = +1
+            AND ROWNUM = 1
+      )
+      AND ils.LN_ST_INSTL_LOAN_STAT_CD IN ('A', 'B', 'P')
+      AND ils.LOAN_STAT_END_TS = '9999-12-31-23.59.59.999999'
+      AND ils.LN_ST_LOAN_STAT_EFF_TS < TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+      AND ils.LN_ST_LOAN_STAT_EFF_TS > (
+          SELECT TO_CHAR(TO_TIMESTAMP(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD-HH24.MI.SS.FF6')
+          FROM CMN_BATCH_PARMS
+          WHERE CMN_PARM_GRP_ID = 'EPCA'
+            AND CMN_PARM_ENT_ID = 'UDPDT'
+            AND CMN_PARM_SEQ_NO = +1
+            AND ROWNUM = 1
+      )
+) iln
+FULL OUTER JOIN (
+    -- Secondary query (for U2C data)
+    SELECT 
+        cc.EFF_DT, 
+        cc.CUST_ID_NO, 
+        cc.ACCT_NO, 
+        cc.SLS_REP_ID, 
+        cc.OUTLET_ID, 
+        cc.MTN_EFF_DT, 
+        cc.MTN, 
+        'U2C' AS U2C_STATUS
+    FROM CUST_CONTRACT cc
+    WHERE cc.END_DT > TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+      AND cc.CNTRCT_TERMS_ID IN (
+          SELECT DISTINCT CNTRCT_TERMS_ID
+          FROM CNTRCT_TERMS
+          WHERE CTERMS_TERM >= 24 
+            AND CNTRCT_TYP_CD = 'E'
+      )
+      AND cc.EFF_DT < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+      AND cc.EFF_DT > (
+          SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+          FROM CMN_BATCH_PARMS
+          WHERE CMN_PARM_GRP_ID = 'EPCA' 
+            AND CMN_PARM_ENT_ID = 'U2CDT'
+            AND CMN_PARM_SEQ_NO = +1
+            AND ROWNUM = 1
+      )
+) cc
+ON iln.CUST_ID_NO = cc.CUST_ID_NO
+   AND iln.ACCT_NO = cc.ACCT_NO
+   AND iln.MTN = cc.MTN
+ORDER BY 
+    COALESCE(iln.CUST_ID_NO, cc.CUST_ID_NO) ASC, 
+    COALESCE(iln.ACCT_NO, cc.ACCT_NO) ASC, 
+    COALESCE(iln.MTN, cc.MTN) ASC, 
+    COALESCE(iln.MTN_EFF_DT, cc.EFF_DT) ASC;
 
