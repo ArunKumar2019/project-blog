@@ -80,7 +80,7 @@ ON iln.CUST_ID_NO = cc.CUST_ID_NO
    AND iln.ACCT_NO = cc.ACCT_NO
    AND iln.MTN = cc.MTN
 ORDER BY 
-    COALESCE(iln.CUST_ID_NO, cc.CUST_ID_NO) ASC, 
-    COALESCE(iln.ACCT_NO, cc.ACCT_NO) ASC, 
-    COALESCE(iln.MTN, cc.MTN) ASC, 
+    CUST_ID_NO ASC, 
+    ACCT_NO ASC, 
+    MTN ASC, 
     COALESCE(iln.MTN_EFF_DT, cc.EFF_DT) ASC;
