@@ -139,7 +139,8 @@ ORDER BY cust_id_no, mtn, eff_dt ASC;
 
 ___________________________________________________
 
-WITH CombinedData AS (
+SELECT *
+FROM (
     SELECT 
         COALESCE(c1.cust_id_no, c2.cust_id_no) AS cust_id_no,
         c1.install_loan_no,
@@ -266,8 +267,6 @@ FULL OUTER JOIN (
 ON c1.cust_id_no = c2.cust_id_no 
 AND c1.acct_no = c2.acct_no 
 AND c1.mtn = c2.mtn
-)
-SELECT *
-FROM CombinedData
+) AS CombinedData
 WHERE rn = 1
 ORDER BY cust_id_no, acct_no, mtn_eff_dt ASC;
