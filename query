@@ -84,3 +84,150 @@ ORDER BY
     ACCT_NO ASC, 
     MTN ASC, 
     COALESCE(iln.MTN_EFF_DT, cc.EFF_DT) ASC;
+
+
+
+
+____________________________________
+If we want to merge the two queries using an INNER JOIN and avoid null values, only records with matching CUST_ID_NO, ACCT_NO, and MTN from both queries will be returned. Here’s the revised query:
+
+SELECT 
+    iln.install_loan_no,
+    iln.loan_sys_crt_dt,
+    iln.outlet_id,
+    iln.cust_id_no,
+    iln.acct_no,
+    c2.eff_dt,
+    iln.mtn,
+    iln.mtn_eff_dt,
+    ils.ln_st_loan_stat_eff_ts,
+    'UDP' AS UDP,
+    'U2C' AS U2C
+FROM (
+    SELECT 
+        iln.install_loan_no, 
+        iln.loan_sys_crt_dt, 
+        iln.outlet_id, 
+        iln.cust_id_no, 
+        iln.acct_no, 
+        iln.mtn, 
+        iln.mtn_eff_dt, 
+        ils.ln_st_loan_stat_eff_ts
+    FROM (
+        SELECT 
+            ql.install_loan_no, 
+            ql.loan_sys_crt_dt, 
+            ql.outlet_id, 
+            ql.cust_id_no, 
+            ql.acct_no, 
+            ql.mtn, 
+            ql.mtn_eff_dt, 
+            ql.eq_ord_no, 
+            ql.netace_loc_id
+        FROM (
+            SELECT 
+                install_loan_no, 
+                loan_sys_crt_dt, 
+                outlet_id, 
+                cust_id_no, 
+                acct_no, 
+                mtn, 
+                mtn_eff_dt, 
+                eq_ord_no, 
+                netace_loc_id 
+            FROM 
+                installment_loan
+            WHERE 
+                loan_sys_crt_dt < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+                AND loan_sys_crt_dt > (
+                    SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+                    FROM cmn_batch_parms
+                    WHERE cmn_parm_grp_id = 'EPCA' AND cmn_parm_ent_id = 'UDPDT' AND cmn_parm_seq_no = 1
+                    FETCH FIRST 1 ROW ONLY
+                )
+        ) ql
+        LEFT JOIN (
+            SELECT 
+                mtn, 
+                eq_ord_no, 
+                netace_loc_id 
+            FROM 
+                current_eq_order_status
+            WHERE 
+                eo_stat_eff_tmstmp <= TO_TIMESTAMP('YYYY-MM-DD-HH24.MI.SS.FF6')
+                AND eo_stat_ed = 'C' 
+                AND device_cho_rsn_cd = 'CE'
+        ) q2
+        ON 
+            ql.mtn = q2.mtn 
+            AND ql.eq_ord_no = q2.eq_ord_no 
+            AND ql.netace_loc_id = q2.netace_loc_id
+        WHERE 
+            q2.mtn IS NULL 
+            AND q2.eq_ord_no IS NULL 
+            AND q2.netace_loc_id IS NULL
+    ) iln
+    INNER JOIN (
+        SELECT 
+            install_loan_no, 
+            ln_st_loan_stat_eff_ts 
+        FROM 
+            installment_loan_status
+        WHERE 
+            in_st_instl_loan_stat_cd IN ('A', 'B', 'P')
+            AND loan_stat_end_ts = '9999-12-31-23.59.59.999999'
+            AND ln_st_loan_stat_eff_ts < TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+            AND ln_st_loan_stat_eff_ts > (
+                SELECT TO_CHAR(TO_TIMESTAMP(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD-HH24.MI.SS.FF6')
+                FROM cmn_batch_parms
+                WHERE cmn_parm_grp_id = 'EPCA' AND cmn_parm_ent_id = 'UDPDT' AND cmn_parm_seq_no = 1
+                FETCH FIRST 1 ROW ONLY
+            )
+    ) ils 
+    ON iln.install_loan_no = ils.install_loan_no 
+    AND iln.loan_sys_crt_dt = TO_CHAR(TO_TIMESTAMP(ils.ln_st_loan_stat_eff_ts, 'YYYY-MM-DD-HH24.MI.SS.FF6'), 'YYYY-MM-DD')
+) iln
+INNER JOIN (
+    SELECT 
+        eff_dt, 
+        cust_id_no, 
+        acct_no, 
+        sls_rep_id, 
+        outlet_id, 
+        mtn_eff_dt, 
+        mtn
+    FROM 
+        cust_contract
+    WHERE 
+        end_dt > TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+        AND cntrct_terms_id IN (
+            SELECT DISTINCT cntrct_terms_id 
+            FROM cntrct_terms
+            WHERE terms_term >= 24 AND cntrct_typ_cd = 'E'
+        )
+        AND eff_dt < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+        AND eff_dt > (
+            SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+            FROM cmn_batch_parms
+            WHERE cmn_parm_grp_id = 'EPCA' AND cmn_parm_ent_id = 'U2CDT' AND cmn_parm_seq_no = 1
+            FETCH FIRST 1 ROW ONLY
+        )
+) c2
+ON iln.cust_id_no = c2.cust_id_no 
+AND iln.acct_no = c2.acct_no 
+AND iln.mtn = c2.mtn
+ORDER BY c2.eff_dt ASC
+FETCH FIRST 100 ROWS ONLY;
+
+Explanation
+
+INNER JOIN: Only includes records with matching CUST_ID_NO, ACCT_NO, and MTN between the two datasets.
+
+Ordering: Sorts results by EFF_DT from cust_contract (c2.eff_dt) in ascending order.
+
+Fetch Limit: Limits results to the first 100 rows.
+
+
+This version should only return rows with matches in both datasets, as specified.
+
+
