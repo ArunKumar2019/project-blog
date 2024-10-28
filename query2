@@ -125,4 +125,136 @@ ON iln.cust_id_no = c2.cust_id_no
 AND iln.acct_no = c2.acct_no 
 AND iln.mtn = c2.mtn
 ORDER BY cust_id_no, mtn, eff_dt ASC
+FETCH FIRST 100 ROWS ON
+
+
+
+
+#_#_#_#_#_#__#_#_#_#_#_#_#&#&#&#&#&#&#&#&#&#_#_#_#&-#-#+$($
+
+
+SELECT DISTINCT 
+    COALESCE(iln.cust_id_no, c2.cust_id_no) AS cust_id_no,
+    COALESCE(iln.install_loan_no, '') AS install_loan_no,
+    COALESCE(iln.loan_sys_crt_dt, '') AS loan_sys_crt_dt,
+    COALESCE(iln.outlet_id, c2.outlet_id) AS outlet_id,
+    COALESCE(iln.acct_no, c2.acct_no) AS acct_no,
+    COALESCE(c2.eff_dt, iln.mtn_eff_dt) AS eff_dt,
+    COALESCE(iln.mtn, c2.mtn) AS mtn,
+    COALESCE(iln.mtn_eff_dt, '') AS mtn_eff_dt,
+    CASE 
+        WHEN iln.install_loan_no IS NOT NULL THEN 'UDP' 
+        ELSE 'U2C' 
+    END AS status
+FROM (
+    SELECT 
+        iln.install_loan_no, 
+        iln.loan_sys_crt_dt, 
+        iln.outlet_id, 
+        iln.cust_id_no, 
+        iln.acct_no, 
+        iln.mtn, 
+        iln.mtn_eff_dt, 
+        ils.ln_st_loan_stat_eff_ts
+    FROM (
+        SELECT 
+            install_loan_no, 
+            loan_sys_crt_dt, 
+            outlet_id, 
+            cust_id_no, 
+            acct_no, 
+            mtn, 
+            mtn_eff_dt, 
+            eq_ord_no, 
+            netace_loc_id 
+        FROM 
+            installment_loan_loan_no
+        WHERE 
+            TO_DATE(loan_sys_crt_dt, 'YYYY-MM-DD') < CURRENT_DATE
+            AND TO_DATE(loan_sys_crt_dt, 'YYYY-MM-DD') > (
+                SELECT TO_DATE(cmn_parm_value, 'MM/DD/YYYY')
+                FROM cmn_batch_parms
+                WHERE cmn_parm_grp_id = 'EPCA' 
+                AND cmn_parm_ent_id = 'UDPDT' 
+                AND cmn_parm_seq_no = 1
+                FETCH FIRST 1 ROW ONLY
+            )
+    ) ql
+    LEFT JOIN (
+        SELECT 
+            mtn, 
+            eq_ord_no, 
+            netace_loc_id 
+        FROM 
+            eq_order_status
+        WHERE 
+            TO_TIMESTAMP(eo_stat_eff_tmstmp, 'YYYY-MM-DD-HH24.MI.SS.FF6') <= SYSTIMESTAMP
+            AND eo_stat_cd = 'C' 
+            AND device_chg_rsn_cd = 'CE'
+    ) q2
+    ON ql.mtn = q2.mtn 
+       AND ql.eq_ord_no = q2.eq_ord_no 
+       AND ql.netace_loc_id = q2.netace_loc_id
+    WHERE 
+        q2.mtn IS NULL 
+        AND q2.eq_ord_no IS NULL 
+        AND q2.netace_loc_id IS NULL
+) iln
+INNER JOIN (
+    SELECT 
+        install_loan_no, 
+        ln_st_loan_stat_eff_ts 
+    FROM 
+        installment_loan_status
+    WHERE 
+        LN_ST_INSTL_LOAN_STAT_CD IN ('A', 'B', 'P')
+        AND TO_DATE(loan_stat_end_ts, 'YYYY-MM-DD') = TO_DATE('9999-12-31', 'YYYY-MM-DD')
+        AND TO_TIMESTAMP(ln_st_loan_stat_eff_ts, 'YYYY-MM-DD-HH24.MI.SS.FF6') < SYSTIMESTAMP
+        AND TO_TIMESTAMP(ln_st_loan_stat_eff_ts, 'YYYY-MM-DD-HH24.MI.SS.FF6') > (
+            SELECT TO_TIMESTAMP(cmn_parm_value, 'MM/DD/YYYY')
+            FROM cmn_batch_parms
+            WHERE cmn_parm_grp_id = 'EPCA' 
+            AND cmn_parm_ent_id = 'UDPDT' 
+            AND cmn_parm_seq_no = 1
+            FETCH FIRST 1 ROW ONLY
+        )
+) ils 
+ON iln.install_loan_no = ils.install_loan_no 
+   AND TO_DATE(iln.loan_sys_crt_dt, 'YYYY-MM-DD') = TO_DATE(ils.ln_st_loan_stat_eff_ts, 'YYYY-MM-DD')
+FULL OUTER JOIN (
+    SELECT 
+        eff_dt, 
+        cust_id_no, 
+        acct_no, 
+        sls_rep_id, 
+        outlet_id, 
+        mtn_eff_dt, 
+        mtn
+    FROM 
+        cust_contract
+    WHERE 
+        TO_DATE(end_dt, 'YYYY-MM-DD') > CURRENT_DATE
+        AND cntrct_terms_id IN (
+            SELECT DISTINCT cntrct_terms_id 
+            FROM cntrct_terms
+            WHERE cterms_term >= 24 
+            AND cntrct_typ_cd = 'E'
+        )
+        AND TO_DATE(eff_dt, 'YYYY-MM-DD') < CURRENT_DATE
+        AND TO_DATE(eff_dt, 'YYYY-MM-DD') > (
+            SELECT TO_DATE(cmn_parm_value, 'MM/DD/YYYY')
+            FROM cmn_batch_parms
+            WHERE cmn_parm_grp_id = 'EPCA' 
+            AND cmn_parm_ent_id = 'U2CDT' 
+            AND cmn_parm_seq_no = 1
+            FETCH FIRST 1 ROW ONLY
+        )
+) c2
+ON iln.cust_id_no = c2.cust_id_no 
+   AND iln.acct_no = c2.acct_no 
+   AND iln.mtn = c2.mtn
+ORDER BY cust_id_no, mtn, eff_dt ASC
 FETCH FIRST 100 ROWS ONLY;
+
+
+
