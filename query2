@@ -136,3 +136,138 @@ ON c1.cust_id_no = c2.cust_id_no
 AND c1.acct_no = c2.acct_no 
 AND c1.mtn = c2.mtn
 ORDER BY cust_id_no, mtn, eff_dt ASC;
+
+___________________________________________________
+
+WITH CombinedData AS (
+    SELECT 
+        COALESCE(c1.cust_id_no, c2.cust_id_no) AS cust_id_no,
+        c1.install_loan_no,
+        c1.loan_sys_crt_dt AS loan_sys_crt_dt,
+        COALESCE(c1.outlet_id, c2.outlet_id) AS outlet_id,
+        COALESCE(c1.acct_no, c2.acct_no) AS acct_no,
+        c2.eff_dt AS eff_dt,
+        COALESCE(c1.mtn, c2.mtn) AS mtn,
+        c1.mtn_eff_dt AS mtn_eff_dt,
+        COALESCE(c1.type_status, c2.type_status) AS type_status,
+        ROW_NUMBER() OVER (PARTITION BY COALESCE(c1.cust_id_no, c2.cust_id_no), COALESCE(c1.acct_no, c2.acct_no), c1.mtn_eff_dt ORDER BY c2.eff_dt DESC) AS rn
+    FROM (
+        SELECT 
+            iln.install_loan_no, 
+            iln.loan_sys_crt_dt, 
+            iln.outlet_id, 
+            iln.cust_id_no, 
+            iln.acct_no, 
+            iln.mtn, 
+            iln.mtn_eff_dt,
+            ils.ln_st_loan_stat_eff_ts,
+            'UDP' AS type_status
+        FROM (
+            SELECT 
+                install_loan_no,
+                loan_sys_crt_dt,
+                outlet_id,
+                cust_id_no,
+                acct_no,
+                mtn,
+                mtn_eff_dt,
+                eq_ord_no,
+                netace_loc_id
+            FROM 
+                installment_loan_loan_no
+            WHERE 
+                loan_sys_crt_dt < TO_CHAR(current_date, 'YYYY-MM-DD') 
+                AND loan_sys_crt_dt > (
+                    SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+                    FROM cmn_batch_parms
+                    WHERE 
+                        cmn_parm_grp_id = 'EPCA' 
+                        AND cmn_parm_ent_id = 'UDPDT' 
+                        AND cmn_parm_seq_no = 1 
+                    FETCH FIRST 1 ROW ONLY
+                )
+        ) q1
+        LEFT JOIN (
+            SELECT 
+                mtn, 
+                eq_ord_no, 
+                netace_loc_id 
+            FROM 
+                eq_order_status 
+            WHERE 
+                eo_stat_eff_tmstmp <= TO_CHAR(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6') 
+                AND eo_stat_cd = 'C' 
+                AND device_chg_rsn_cd = 'CE'
+        ) q2 
+        ON 
+            q1.mtn = q2.mtn 
+            AND q1.eq_ord_no = q2.eq_ord_no 
+            AND q1.netace_loc_id = q2.netace_loc_id 
+        WHERE 
+            q2.mtn IS NULL 
+            AND q2.eq_ord_no IS NULL 
+            AND q2.netace_loc_id IS NULL
+    ) iln
+    INNER JOIN (
+        SELECT 
+            install_loan_no, 
+            ln_st_loan_stat_eff_ts 
+        FROM 
+            installment_loan_status 
+        WHERE 
+            ln_st_instl_loan_stat_cd IN ('A', 'B', 'P') 
+            AND loan_stat_end_ts = '9999-12-31-23.59.59.999999' 
+            AND ln_st_loan_stat_eff_ts < TO_CHAR(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6') 
+            AND ln_st_loan_stat_eff_ts > (
+                SELECT TO_CHAR(TO_TIMESTAMP(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD-HH24.MI.SS.FF6') 
+                FROM cmn_batch_parms 
+                WHERE 
+                    cmn_parm_grp_id = 'EPCA' 
+                    AND cmn_parm_ent_id = 'UDPDT' 
+                    AND cmn_parm_seq_no = 1 
+                FETCH FIRST 1 ROW ONLY
+            )
+    ) ils 
+    ON iln.install_loan_no = ils.install_loan_no 
+    AND iln.loan_sys_crt_dt = TO_CHAR(TO_TIMESTAMP(ils.ln_st_loan_stat_eff_ts, 'YYYY-MM-DD-HH24.MI.SS.FF6'), 'YYYY-MM-DD')
+) c1
+FULL OUTER JOIN (
+    SELECT 
+        EFF_DT,
+        CUST_ID_NO,
+        ACCT_NO,
+        SLS_REP_ID,
+        OUTLET_ID,
+        MTN_EFF_DT,
+        MTN,
+        'U2C' AS type_status 
+    FROM 
+        CUST_CONTRACT 
+    WHERE 
+        END_DT > TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') 
+        AND CNTRCT_TERMS_ID IN (
+            SELECT DISTINCT CNTRCT_TERMS_ID 
+            FROM CNTRCT_TERMS 
+            WHERE 
+                CTERMS_TERM >= 24 
+                AND CNTRCT_TYP_CD = 'E'
+        ) 
+        AND EFF_DT < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') 
+        AND EFF_DT > (
+            SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD') 
+            FROM CMN_BATCH_PARMS 
+            WHERE 
+                CMN_PARM_GRP_ID = 'EPCA' 
+                AND CMN_PARM_ENT_ID = 'U2CDT' 
+                AND CMN_PARM_SEQ_NO = 1 
+            FETCH FIRST 1 ROW ONLY
+        )
+) c2 
+ON c1.cust_id_no = c2.cust_id_no 
+AND c1.acct_no = c2.acct_no 
+AND c1.mtn = c2.mtn
+)
+SELECT *
+FROM CombinedData
+WHERE rn = 1
+ORDER BY cust_id_no, acct_no, mtn_eff_dt ASC;
