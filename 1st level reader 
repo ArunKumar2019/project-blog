@@ -58,3 +58,74 @@ SELECT CUST_ID_NO,
           AND CMN_PARM_SEQ_NO = 1
         FETCH FIRST 1 ROW ONLY
    )
+
+11222222223222333455677990/
+
+
+SELECT CUST_ID_NO,
+       ACCT_NO,
+       SF_OFFERING_ID AS SF_OFFERING_ID,  -- Specific to the first query
+       SVC_PROD_ID AS SVC_PROD_ID,        -- Specific to the second query
+       OUTLET_ID,
+       SLS_REP_ID,
+       CREATE_DT AS CREATE_TIMESTAMP_SF,  -- Specific to the first query
+       CREATE_TS AS CREATE_TIMESTAMP_SVC, -- Specific to the second query
+       EFF_DT AS EFF_TIMESTAMP_SF,        -- Specific to the first query
+       BA_SVC_PROD_EFF_TS AS EFF_TIMESTAMP_SVC,  -- Specific to the second query
+       MTN,                               -- Specific to the first query
+       MTN_EFF_DT,                        -- Specific to the first query
+       'SFO' AS TYPE_STATUS
+  FROM SF_MTN
+ WHERE END_DT = '9999-12-31'
+   AND SF_OFFERING_ID IN (
+       SELECT DISTINCT SF_OFFERING_ID
+         FROM SF_OFFR sf
+         INNER JOIN ENHANCED_SRV_PCKGE pd ON sf.PCKGE_ID = pd.PCKGE_ID
+        WHERE sf.SF_STAT IN ('A', 'E')
+          AND sf.SF_OFFERING_ID <> 6633
+          AND pd.PKG_GROUP_CD = 'EQ'
+          AND pd.PCKGE_END_DT >= TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+   )
+   AND CREATE_DT < TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+   AND CREATE_DT > (
+       SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+         FROM CMN_BATCH_PARMS
+        WHERE CMN_PARM_GRP_ID = 'EPCA'
+          AND CMN_PARM_ENT_ID = 'LPDT'
+          AND CMN_PARM_SEQ_NO = 2
+        FETCH FIRST 1 ROW ONLY
+   )
+
+UNION ALL
+
+SELECT CUST_ID_NO,
+       ACCT_NO,
+       NULL AS SF_OFFERING_ID,          -- Placeholder for the column only in the first query
+       SVC_PROD_ID,                     -- Specific to the second query
+       OUTLET_ID,
+       SLS_REP_ID,
+       NULL AS CREATE_TIMESTAMP_SF,     -- Placeholder for the column only in the first query
+       CREATE_TS AS CREATE_TIMESTAMP_SVC,  -- Specific to the second query
+       NULL AS EFF_TIMESTAMP_SF,        -- Placeholder for the column only in the first query
+       BA_SVC_PROD_EFF_TS AS EFF_TIMESTAMP_SVC, -- Specific to the second query
+       NULL AS MTN,                     -- Placeholder for the column only in the first query
+       NULL AS MTN_EFF_DT,              -- Placeholder for the column only in the first query
+       'SPO' AS TYPE_STATUS
+  FROM BL_ACCT_SVC_PROD
+ WHERE BA_SVC_PROD_END_TS > TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+   AND SVC_PROD_ID IN (
+       SELECT DISTINCT SVC_PROD_ID
+         FROM SVC_PROD_CAT
+        WHERE PRC_CAT_CD = 'EQ'
+          AND SVC_PROD_CAT_END_DT >= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+   )
+   AND CREATE_TS < TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+   AND CREATE_TS > (
+       SELECT CMN_PARM_VALUE
+         FROM CMN_BATCH_PARMS
+        WHERE CMN_PARM_GRP_ID = 'EPCA'
+          AND CMN_PARM_ENT_ID = 'LPTS'
+          AND CMN_PARM_SEQ_NO = 1
+        FETCH FIRST 1 ROW ONLY
+   )
+ORDER BY COALESCE(CREATE_TIMESTAMP_SF, CREATE_TIMESTAMP_SVC);
