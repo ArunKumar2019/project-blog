@@ -16,8 +16,7 @@ FROM (
         iln.cust_id_no, 
         iln.acct_no, 
         iln.mtn, 
-        iln.mtn_eff_dt, 
-        ils.ln_st_loan_stat_eff_ts,
+        iln.mtn_eff_dt,
         'UDP' AS type_status
     FROM (
         SELECT 
