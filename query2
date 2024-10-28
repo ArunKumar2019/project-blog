@@ -1,13 +1,14 @@
 SELECT DISTINCT 
-    COALESCE(iln.cust_id_no, c2.cust_id_no) AS cust_id_no,
-    COALESCE(iln.install_loan_no, '') AS install_loan_no,
-    COALESCE(iln.loan_sys_crt_dt, '') AS loan_sys_crt_dt,
-    COALESCE(iln.outlet_id, c2.outlet_id) AS outlet_id,
-    COALESCE(iln.acct_no, c2.acct_no) AS acct_no,
-    COALESCE(c2.eff_dt, iln.mtn_eff_dt) AS eff_dt,
-    COALESCE(iln.mtn, c2.mtn) AS mtn,
-    COALESCE(iln.mtn_eff_dt, '') AS mtn_eff_dt,
-    COALESCE(iln.type_status, c2.type_status) AS type_status
+    COALESCE(c1.cust_id_no, c2.cust_id_no) AS cust_id_no,
+    c1.install_loan_no install_loan_no,
+    c1.loan_sys_crt_dt AS loan_sys_crt_dt,
+    COALESCE(c1.outlet_id, c2.outlet_id) AS outlet_id,
+    COALESCE(c1.acct_no, c2.acct_no) AS acct_no,
+    c2.eff_dt AS eff_dt,
+    COALESCE(c1.mtn, c2.mtn) AS mtn,
+     c1.mtn_eff_dt  AS mtn_eff_dt,
+     c2.
+    COALESCE(c1.type_status, c2.type_status) AS type_status
 FROM (
     SELECT 
         iln.install_loan_no, 
@@ -17,6 +18,7 @@ FROM (
         iln.acct_no, 
         iln.mtn, 
         iln.mtn_eff_dt,
+        ils.ln_st_loan_stat_eff_ts,
         'UDP' AS type_status
     FROM (
         SELECT 
@@ -97,7 +99,7 @@ FROM (
     ) ils 
     ON iln.install_loan_no = ils.install_loan_no 
     AND iln.loan_sys_crt_dt = TO_CHAR(TO_TIMESTAMP(ils.ln_st_loan_stat_eff_ts, 'YYYY-MM-DD-HH24.MI.SS.FF6'), 'YYYY-MM-DD')
-) iln
+) c1
 FULL OUTER JOIN (
     SELECT 
         EFF_DT,
@@ -130,7 +132,7 @@ FULL OUTER JOIN (
             FETCH FIRST 1 ROW ONLY
         )
 ) c2 
-ON iln.cust_id_no = c2.cust_id_no 
-AND iln.acct_no = c2.acct_no 
-AND iln.mtn = c2.mtn
+ON c1.cust_id_no = c2.cust_id_no 
+AND c1.acct_no = c2.acct_no 
+AND c1.mtn = c2.mtn
 ORDER BY cust_id_no, mtn, eff_dt ASC;
