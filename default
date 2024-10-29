@@ -1,0 +1,22 @@
+DECLARE
+    v_count NUMBER;
+BEGIN
+    -- Check if the record with JOB_NAME 'acstfhip' exists
+    SELECT COUNT(*) INTO v_count 
+    FROM CST_BATCH_JOB_CONFIG 
+    WHERE JOB_NAME = 'acstfhip';
+
+    IF v_count > 0 THEN
+        -- Record exists, perform the update
+        UPDATE CST_BATCH_JOB_CONFIG 
+        SET JOB_CONFIG = '{"jobTrigger":"oracleJob", "outputMode": "http"}'
+        WHERE JOB_NAME = 'acstfhip';
+    ELSE
+        -- Record does not exist, perform the insert
+        INSERT INTO CST_BATCH_JOB_CONFIG (JOB_NAME, JOB_CONFIG)
+        VALUES ('acstfhip', '{"jobTrigger":"oracleJob", "outputMode": "http"}');
+    END IF;
+
+    COMMIT;
+END;
+/
