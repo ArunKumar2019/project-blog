@@ -20,3 +20,28 @@ BEGIN
     COMMIT;
 END;
 /
+
+
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
+
+public class DateDifferenceCalculator {
+    public static String calculateDaysDifference(String date1, String date2) {
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        LocalDate startDate = LocalDate.parse(date1, formatter);
+        LocalDate endDate = LocalDate.parse(date2, formatter);
+
+        long daysBetween = ChronoUnit.DAYS.between(endDate, startDate);
+        return String.valueOf(daysBetween);
+    }
+
+    public static void main(String[] args) {
+        String date1 = "2024-06-23";
+        String date2 = "2023-05-22";
+        
+        String difference = calculateDaysDifference(date1, date2);
+        System.out.println("Difference in days: " + difference);
+    }
+}
