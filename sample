@@ -1,0 +1,13 @@
+VISION    8799064024273002200001CPNI-BUSINESS-EMAIL           09/30/2024VS                                                            123 MAIN STREET                                                                                                                                       NEWARK                        NJ07106-    NE                                                                                                            FIRST-NAME                                                                                            LAST-NAME                COMPANY NAME LLC              00002B
+
+
+
+customerInfoModel.setCustAcctString(reformatToSize(String.valueOf(acst968pModel.getCustIdNo()), 10, "0", false)+" "
+				+ reformatToSize(String.valueOf(acst968pModel.getAcctNo()), 5, "0", false));
+		customerInfoModel.setSystem(StringUtils.leftPad("VISION", 10, " "));
+		customerInfoModel.setChangeDate(LocalDate.now().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")));
+		customerInfoModel.setOrdSrcSysCd(acst968pModel.getOrdSrcSysCd());
+
+
+
+      VISION01557900000 00001CPNI-BUSINESS-MAILING11/04/2024BUSINESS-CUSTOMERDRKYLEHWRIGHT4
