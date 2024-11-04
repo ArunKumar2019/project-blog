@@ -11,3 +11,42 @@ customerInfoModel.setCustAcctString(reformatToSize(String.valueOf(acst968pModel.
 
 
       VISION01557900000 00001CPNI-BUSINESS-MAILING11/04/2024BUSINESS-CUSTOMERDRKYLEHWRIGHT4
+
+
+
+
+// Helper method to pad or truncate strings to a fixed size
+private String reformatToSize(String input, int size, String padChar, boolean leftPad) {
+    if (leftPad) {
+        return StringUtils.leftPad(input, size, padChar);
+    } else {
+        return StringUtils.rightPad(input, size, padChar);
+    }
+}
+
+// Updated code for formatting customer information
+customerInfoModel.setCustAcctString(
+    reformatToSize(String.valueOf(acst968pModel.getCustIdNo()), 10, "0", true) +   // custIdNo padded to 10 characters
+    reformatToSize(String.valueOf(acst968pModel.getAcctNo()), 5, "0", true) +      // acctNo padded to 5 characters
+    reformatToSize("CPNI-BUSINESS-EMAIL", 30, " ", false)                          // CPNI-BUSINESS-EMAIL fixed at 30 characters
+);
+
+customerInfoModel.setSystem(reformatToSize("VISION", 10, " ", false));             // VISION right-padded to 10 characters
+
+// Formatting date to MM/dd/yyyy and ensuring fixed length
+customerInfoModel.setChangeDate(
+    reformatToSize(LocalDate.now().format(DateTimeFormatter.ofPattern("MM/dd/yyyy")), 10, " ", false)
+);
+
+customerInfoModel.setOrdSrcSysCd(
+    reformatToSize(acst968pModel.getOrdSrcSysCd(), 2, " ", false)                  // OrdSrcSysCd formatted to 2 characters
+);
+
+// Additional fields you might need to format in a similar way
+customerInfoModel.setAddress(reformatToSize(acst968pModel.getAddress(), 50, " ", false));  // Address fixed at 50 characters
+customerInfoModel.setCity(reformatToSize(acst968pModel.getCity(), 30, " ", false));        // City fixed at 30 characters
+customerInfoModel.setState(reformatToSize(acst968pModel.getState(), 2, " ", false));       // State fixed at 2 characters
+customerInfoModel.setPostalCode(reformatToSize(acst968pModel.getPostalCode(), 10, " ", false));  // Postal code 10 characters
+customerInfoModel.setCompanyName(reformatToSize(acst968pModel.getCompanyName(), 40, " ", false)); // Company name fixed at 40 characters
+customerInfoModel.setFirstName(reformatToSize(acst968pModel.getFirstName(), 50, " ", false));     // First name fixed at 50 characters
+customerInfoModel.setLastName(reformatToSize(acst968pModel.getLastName(), 50, " ", false));       // Last name fixed at 50 characters
