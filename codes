@@ -1,0 +1,19 @@
+customerInfoModel.setCustAcctString(
+				reformatToSize(String.valueOf(acst968pModel.getCustIdNo()), 10, "0", true) +   // custIdNo padded to 10 characters
+						reformatToSize(String.valueOf(acst968pModel.getAcctNo()), 5, "0", true) +      // acctNo padded to 5 characters
+						reformatToSize("CPNI-BUSINESS-EMAIL", 30, " ", false)                          // CPNI-BUSINESS-EMAIL fixed at 30 characters
+		);
+
+		customerInfoModel.setSystem(reformatToSize("VISION", 10, " ", false));
+		customerInfoModel.setChangeDate(LocalDate.now().format(DateTimeFormatter.ofPattern("MM/dd/YYYY")));
+		customerInfoModel.setOrdSrcSysCd(acst968pModel.getOrdSrcSysCd());
+		//calling sub methods
+		Integer activemtnQty = getActiveMtn(acst968pModel, namedJdbcTemplate, jobConfig); //get active-mtn-qty
+		customerInfoModel.setActvMtnQty(activemtnQty);
+		Integer ecpdid = getEcpdId(acst968pModel, namedJdbcTemplate, jobConfig);    //get ecpdId-mtn-qty
+		if (ecpdid != null) {
+			customerInfoModel.setEcpdProfileId(ecpdid);
+		} else {
+			customerInfoModel.setEcpdProfileId(0);
+
+		}
