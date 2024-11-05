@@ -45,3 +45,7 @@ if (ecpdid != null) {
 } else {
     customerInfoModel.setEcpdProfileId(0);
 }
+
+---------------------------------------------------------------------------
+select cust_id_no,acct_no,key_value,eff_tmstamp,ord_src_sys_cd from BL_ACCT_ADDL_INFO where EFF_TMSTAMP!='NULL' and notif_process_typ ='R' and TO_CHAR(TO_TIMESTAMP(EFF_TMSTAMP,'YYYY-MM-DD-HH24.MI:SS.FF6'),'YYYY-MM-DD')
+in (select TO_CHAR(to_date("2024-06-04"),'YYYY-MM-DD') from BL_ACCT_ADDL_INFO);
