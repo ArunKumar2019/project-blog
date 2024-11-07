@@ -1,0 +1,48 @@
+ 05  CSTRL61I-CUST-ID             PIC X(11).
+           05  CSTRL61I-ACCT-NO             PIC X(11).
+           05  CSTRL61I-SF-OFFERING-ID      PIC X(11).
+           05  CSTRL61I-SVC-PROD-ID         PIC X(11).
+           05  CSTRL61I-OUTLET-ID           PIC X(11).
+           05  CSTRL61I-SLS-REP-ID-PRIM     PIC X(05).
+871647     05  CSTRL61I-CREATE-DT           PIC X(10).
+871647     05  CSTRL61I-CREATE-TS           PIC X(26).
+           05  CSTRL61I-EFF-DT              PIC X(10).
+871647     05  CSTRL61I-EFF-TS              PIC X(26).
+           05  CSTRL61I-MTN.
+               07 CSTRL61I-NPA              PIC X(03).
+               07 CSTRL61I-NXX              PIC X(03).
+               07 CSTRL61I-TLN              PIC X(04).
+871647     05  CSTRL61I-MTN-EFF-DT          PIC X(10).
+875358     05  CSTRL61I-SFO-SPO-UPGD-IND    PIC X(3).
+               88 CSTRL61I-SFO-IND          VALUE 'SFO'.
+               88 CSTRL61I-SPO-IND          VALUE 'SPO'.
+875358         88 CSTRL61I-U2C-IND          VALUE 'U2C'.
+875358         88 CSTRL61I-UDP-IND          VALUE 'UDP'.
+
+
+1st level reader query
+
+--Input1: ACSTNP.ACST610P.SFOF.LINES
+--Input2: ACSTNP.ACST610P.SPOF.LINES
+--Output: ACSTNP.ACST610P.EPCA.INPUT need to merge with Input1: ACSTNP.ACST610P.CUSCTRCT.LINES
+--                                                      Input2: ACSTNP.ACST610P.INSTLN.LINES
+SELECT CUST_ID_NO,ACCT_NO, SF_OFFERING_ID AS SF_OFFERING_ID, NULL AS SVC_PROD_ID, OUTLET_ID, SLS_REP_ID, CREATE_DT AS CREATE_DATE,NULL AS CREATE_TIMESTAMP, EFF_DT AS EFF_TIMESTAMP_SF,NULL AS EFF_TIMESTAMP_SVC,MTN,MTN_EFF_DT,'SFO' AS TYPE_STATUS
+FROM SF_MTN WHERE END_DT = '9999-12-31' AND SF_OFFERING_ID IN ( SELECT DISTINCT SF_OFFERING_ID FROM SF_OFFR sf INNER JOIN ENHANCED_SRV_PCKGE pd ON sf.PCKGE_ID = pd.PCKGE_ID WHERE sf.SF_STAT IN ('A', 'E') AND sf.SF_OFFERING_ID <> 6633 AND pd.PKG_GROUP_CD = 'EQ' AND pd.PCKGE_END_DT >= TO_CHAR(SYSDATE, 'YYYY-MM-DD'))
+AND CREATE_DT < TO_CHAR(SYSDATE, 'YYYY-MM-DD') AND CREATE_DT > ( SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD') FROM CMN_BATCH_PARMS WHERE CMN_PARM_GRP_ID = 'EPCA' AND CMN_PARM_ENT_ID = 'LPDT' AND CMN_PARM_SEQ_NO = 2 FETCH FIRST 1 ROW ONLY )
+UNION ALL SELECT CUST_ID_NO, ACCT_NO, NULL AS SF_OFFERING_ID,SVC_PROD_ID, OUTLET_ID, SLS_REP_ID, NULL AS CREATE_DATE, CREATE_TS AS CREATE_TIMESTAMP, NULL AS EFF_TIMESTAMP_SF,BA_SVC_PROD_EFF_TS AS EFF_TIMESTAMP_SVC, NULL AS MTN, NULL AS MTN_EFF_DT, 'SPO' AS TYPE_STATUS FROM BL_ACCT_SVC_PROD WHERE BA_SVC_PROD_END_TS > TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6') AND SVC_PROD_ID IN ( SELECT DISTINCT SVC_PROD_ID FROM SVC_PROD_CAT WHERE PRC_CAT_CD = 'EQ' AND SVC_PROD_CAT_END_DT >= TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') ) AND CREATE_TS < TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6') AND CREATE_TS > ( SELECT CMN_PARM_VALUE FROM CMN_BATCH_PARMS WHERE CMN_PARM_GRP_ID = 'EPCA' AND CMN_PARM_ENT_ID = 'LPTS' AND CMN_PARM_SEQ_NO = 1 FETCH FIRST 1 ROW ONLY )ORDER BY CREATE_DATE, CREATE_TIMESTAMP;
+
+===========================================================================================================
+-- , ACSTNP.ACST610P.INSTLN.LINES (+UDP)
+
+SELECT iln.install_loan_no, iln.loan_sys_crt_dt, iln.outlet_id, iln.cust_id_no, iln.acct_no , iln.mtn, iln.mtn_eff_dt, ils.ln_st_loan_stat_eff_ts,'UDP' as type_status
+FROM (select q1.install_loan_no ,q1.loan_sys_crt_dt ,q1.outlet_id ,q1.cust_id_no ,q1.acct_no ,q1.mtn ,q1.mtn_eff_dt ,q1.eq_ord_no ,q1.netace_loc_id from (SELECT install_loan_no , loan_sys_crt_dt , outlet_id , cust_id_no , acct_no , mtn , mtn_eff_dt , eq_ord_no , netace_loc_id FROM      installment_loan_loan_no WHERE     loan_sys_crt_dt < To_char(current_date,'YYYY-MM-DD') AND       loan_sys_crt_dt > ( SELECT To_char(To_date(cmn_parm_value,'MM/DD/YYYY'),'YYYY-MM-DD')FROM   cmn_batch_parms
+WHERE  cmn_parm_grp_id = 'EPCA' AND    cmn_parm_ent_id = 'UDPDT' AND    cmn_parm_seq_no = +1 fetch first 1 ROW ONLY )) q1 left join ( SELECT mtn, eq_ord_no , netace_loc_id FROM   eq_order_status WHERE  eo_stat_eff_tmstmp <= to_char(current_timestamp,'YYYY-MM-DD-HH24.MI.SS.FF6') AND    eo_stat_cd = 'C' AND    device_chg_rsn_cd = 'CE') q2 ON        q1.mtn=q2.mtn AND       q1.eq_ord_no=q2.eq_ord_no AND       q1.netace_loc_id=q2.netace_loc_id where q2.mtn is null and q2.eq_ord_no is null and q2.netace_loc_id is null) iln 
+inner join  ( SELECT install_loan_no , ln_st_loan_stat_eff_ts FROM   installment_loan_status WHERE  ln_st_instl_loan_stat_cd IN ('A', 'B', 'P') AND    loan_stat_end_ts = '9999-12-31-23.59.59.999999' AND    ln_st_loan_stat_eff_ts < to_char(current_timestamp,'YYYY-MM-DD-HH24.MI.SS.FF6') AND    ln_st_loan_stat_eff_ts > ( SELECT to_char(to_timestamp(cmn_parm_value,'MM/DD/YYYY'),'YYYY-MM-DD-HH24.MI.SS.FF6') FROM   cmn_batch_parms WHERE  cmn_parm_grp_id = 'EPCA' AND    cmn_parm_ent_id = 'UDPDT' AND    cmn_parm_seq_no = +1
+FETCH first 1 ROW ONLY)) ils ON iln.install_loan_no=ils.install_loan_no and iln.loan_sys_crt_dt=to_char(TO_TIMESTAMP(ils.ln_st_loan_stat_eff_ts,'YYYY-MM-DD-HH24.MI.SS.FF6'),'YYYY-MM-DD') order by iln.install_loan_no fetch first 100 rows only;
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+-- -- ACSTNP.ACST610P.CUSCTRCT.LINES (add U2C)
+SELECT EFF_DT,CUST_ID_NO ,ACCT_NO ,SLS_REP_ID ,OUTLET_ID ,MTN_EFF_DT ,MTN,'U2C' as type_status FROM CUST_CONTRACT  WHERE END_DT > to_char(CURRENT_DATE,'YYYY-MM-DD') AND CNTRCT_TERMS_ID IN (SELECT distinct CNTRCT_TERMS_ID  FROM CNTRCT_TERMS WHERE CTERMS_TERM >= +24 AND CNTRCT_TYP_CD = 'E') 
+AND EFF_DT < to_char(CURRENT_DATE,'YYYY-MM-DD') AND EFF_DT > (SELECT  to_char(to_date(CMN_PARM_VALUE,'MM/DD/YYYY'),'YYYY-MM-DD') FROM CMN_BATCH_PARMS WHERE CMN_PARM_GRP_ID = 'EPCA' AND CMN_PARM_ENT_ID = 'U2CDT' AND CMN_PARM_SEQ_NO = +1 FETCH FIRST 1 ROW ONLY)
+
