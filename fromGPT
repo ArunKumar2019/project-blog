@@ -1,0 +1,151 @@
+SELECT 
+    CUST_ID_NO,
+    ACCT_NO,
+    SF_OFFERING_ID,
+    SVC_PROD_ID,
+    OUTLET_ID,
+    SLS_REP_ID_PRIM,
+    CREATE_DATE,
+    CREATE_TIMESTAMP,
+    EFF_TIMESTAMP_SF,
+    EFF_TIMESTAMP_SVC,
+    MTN,
+    MTN_EFF_DT,
+    TYPE_STATUS
+FROM (
+    -- Query 1 with sorting by CREATE_DATE, CREATE_TIMESTAMP
+    SELECT 
+        CUST_ID_NO,
+        ACCT_NO,
+        SF_OFFERING_ID AS SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        OUTLET_ID,
+        SLS_REP_ID AS SLS_REP_ID_PRIM,
+        CREATE_DT AS CREATE_DATE,
+        NULL AS CREATE_TIMESTAMP,
+        EFF_DT AS EFF_TIMESTAMP_SF,
+        NULL AS EFF_TIMESTAMP_SVC,
+        MTN,
+        MTN_EFF_DT,
+        'SFO' AS TYPE_STATUS
+    FROM 
+        SF_MTN
+    WHERE 
+        END_DT = '9999-12-31' 
+        AND SF_OFFERING_ID IN (
+            SELECT DISTINCT SF_OFFERING_ID 
+            FROM SF_OFFR sf 
+            INNER JOIN ENHANCED_SRV_PCKGE pd 
+                ON sf.PCKGE_ID = pd.PCKGE_ID 
+            WHERE sf.SF_STAT IN ('A', 'E') 
+                AND sf.SF_OFFERING_ID <> 6633 
+                AND pd.PKG_GROUP_CD = 'EQ' 
+                AND pd.PCKGE_END_DT >= TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+        )
+        AND CREATE_DT < TO_CHAR(SYSDATE, 'YYYY-MM-DD') 
+        AND CREATE_DT > (
+            SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD') 
+            FROM CMN_BATCH_PARMS 
+            WHERE CMN_PARM_GRP_ID = 'EPCA' 
+                AND CMN_PARM_ENT_ID = 'LPDT' 
+                AND CMN_PARM_SEQ_NO = 2 
+            FETCH FIRST 1 ROW ONLY 
+        )
+
+    UNION ALL
+
+    -- Query 2 with sorting by CUST_ID_NO, ACCT_NO, MTN, and EFF_DT
+    SELECT 
+        iln.cust_id_no AS CUST_ID_NO,
+        iln.acct_no AS ACCT_NO,
+        NULL AS SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        iln.outlet_id AS OUTLET_ID,
+        NULL AS SLS_REP_ID_PRIM,
+        iln.loan_sys_crt_dt AS CREATE_DATE,
+        ils.ln_st_loan_stat_eff_ts AS CREATE_TIMESTAMP,
+        NULL AS EFF_TIMESTAMP_SF,
+        NULL AS EFF_TIMESTAMP_SVC,
+        iln.mtn AS MTN,
+        iln.mtn_eff_dt AS MTN_EFF_DT,
+        'UDP' AS TYPE_STATUS
+    FROM 
+        (SELECT * FROM installment_loan_loan_no 
+         WHERE loan_sys_crt_dt < TO_CHAR(current_date, 'YYYY-MM-DD')
+           AND loan_sys_crt_dt > (
+               SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD') 
+               FROM cmn_batch_parms 
+               WHERE cmn_parm_grp_id = 'EPCA' 
+                 AND cmn_parm_ent_id = 'UDPDT' 
+                 AND cmn_parm_seq_no = +1 
+               FETCH FIRST 1 ROW ONLY)
+        ) iln 
+    INNER JOIN ( 
+        SELECT install_loan_no, ln_st_loan_stat_eff_ts 
+        FROM installment_loan_status 
+        WHERE ln_st_instl_loan_stat_cd IN ('A', 'B', 'P') 
+          AND loan_stat_end_ts = '9999-12-31-23.59.59.999999' 
+          AND ln_st_loan_stat_eff_ts < TO_CHAR(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6') 
+          AND ln_st_loan_stat_eff_ts > (
+              SELECT TO_CHAR(TO_TIMESTAMP(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD-HH24.MI.SS.FF6') 
+              FROM cmn_batch_parms 
+              WHERE cmn_parm_grp_id = 'EPCA' 
+                AND cmn_parm_ent_id = 'UDPDT' 
+                AND cmn_parm_seq_no = +1 
+              FETCH FIRST 1 ROW ONLY
+        )
+    ) ils 
+    ON iln.install_loan_no = ils.install_loan_no
+    ORDER BY 
+        CUST_ID_NO, 
+        ACCT_NO, 
+        MTN, 
+        CREATE_DATE
+
+    UNION ALL
+
+    -- Query 3 with sorting by CUST_ID_NO, ACCT_NO, MTN, and EFF_DT
+    SELECT 
+        CUST_ID_NO,
+        ACCT_NO,
+        NULL AS SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        OUTLET_ID,
+        SLS_REP_ID AS SLS_REP_ID_PRIM,
+        NULL AS CREATE_DATE,
+        NULL AS CREATE_TIMESTAMP,
+        EFF_DT AS EFF_TIMESTAMP_SF,
+        NULL AS EFF_TIMESTAMP_SVC,
+        MTN,
+        MTN_EFF_DT,
+        'U2C' AS TYPE_STATUS
+    FROM 
+        CUST_CONTRACT
+    WHERE 
+        END_DT > TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+        AND CNTRCT_TERMS_ID IN (
+            SELECT DISTINCT CNTRCT_TERMS_ID 
+            FROM CNTRCT_TERMS 
+            WHERE CTERMS_TERM >= 24 
+              AND CNTRCT_TYP_CD = 'E'
+        )
+        AND EFF_DT < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD') 
+        AND EFF_DT > (
+            SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD') 
+            FROM CMN_BATCH_PARMS 
+            WHERE CMN_PARM_GRP_ID = 'EPCA' 
+              AND CMN_PARM_ENT_ID = 'U2CDT' 
+              AND CMN_PARM_SEQ_NO = +1 
+            FETCH FIRST 1 ROW ONLY
+        )
+    ORDER BY 
+        CUST_ID_NO, 
+        ACCT_NO, 
+        MTN, 
+        EFF_DT
+) AS combined_result;
+
+-- Overall sorting for the first query
+ORDER BY 
+    CREATE_DATE, 
+    CREATE_TIMESTAMP;
