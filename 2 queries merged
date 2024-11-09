@@ -1,0 +1,107 @@
+SELECT 
+    iln.cust_id_no, 
+    iln.acct_no, 
+    NULL AS SF_OFFERING_ID,
+    NULL AS SVC_PROD_ID,
+    iln.outlet_id, 
+    NULL AS SLS_REP_ID, 
+    iln.loan_sys_crt_dt AS CREATE_DATE,
+    NULL AS CREATE_TIMESTAMP,
+    iln.eff_dt, 
+    NULL AS eff_timestamp_svc, 
+    iln.mtn, 
+    iln.mtn_eff_dt, 
+    'UDP' AS type_status
+FROM 
+    (SELECT 
+        q1.install_loan_no,
+        q1.loan_sys_crt_dt,
+        q1.outlet_id,
+        q1.cust_id_no,
+        q1.acct_no,
+        q1.mtn,
+        q1.mtn_eff_dt,
+        q1.eff_dt,   -- Using eff_dt only
+        q1.eq_ord_no,
+        q1.netace_loc_id
+    FROM 
+        (SELECT 
+            install_loan_no,
+            loan_sys_crt_dt,
+            outlet_id,
+            cust_id_no,
+            acct_no,
+            mtn,
+            mtn_eff_dt,
+            eff_dt,   -- Retrieve eff_dt here
+            eq_ord_no,
+            netace_loc_id
+        FROM 
+            installment_loan_loan_no
+        WHERE 
+            loan_sys_crt_dt < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+            AND loan_sys_crt_dt > (
+                SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+                FROM cmn_batch_parms
+                WHERE cmn_parm_grp_id = 'EPCA' 
+                  AND cmn_parm_ent_id = 'UDPDT' 
+                  AND cmn_parm_seq_no = +1 
+                FETCH FIRST 1 ROW ONLY
+            )
+        ) q1 
+    LEFT JOIN 
+        (SELECT mtn, eq_ord_no, netace_loc_id
+        FROM eq_order_status
+        WHERE eo_stat_eff_tmstmp <= TO_CHAR(CURRENT_TIMESTAMP, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+          AND eo_stat_cd = 'C'
+          AND device_chg_rsn_cd = 'CE'
+        ) q2 ON q1.mtn = q2.mtn 
+           AND q1.eq_ord_no = q2.eq_ord_no 
+           AND q1.netace_loc_id = q2.netace_loc_id 
+    WHERE 
+        q2.mtn IS NULL 
+        AND q2.eq_ord_no IS NULL 
+        AND q2.netace_loc_id IS NULL
+    ) iln 
+
+UNION
+
+SELECT 
+    cust_id_no, 
+    acct_no, 
+    NULL AS SF_OFFERING_ID,
+    NULL AS SVC_PROD_ID,
+    outlet_id, 
+    sls_rep_id AS SLS_REP_ID,
+    NULL AS CREATE_DATE,
+    NULL AS CREATE_TIMESTAMP,
+    eff_dt, 
+    NULL AS eff_timestamp_svc,
+    mtn, 
+    mtn_eff_dt, 
+    'U2C' AS type_status
+FROM 
+    cust_contract
+WHERE 
+    end_dt > TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+    AND cntrct_terms_id IN (
+        SELECT DISTINCT cntrct_terms_id
+        FROM cntrct_terms
+        WHERE cterms_term >= 24 
+          AND cntrct_typ_cd = 'E'
+    )
+    AND eff_dt < TO_CHAR(CURRENT_DATE, 'YYYY-MM-DD')
+    AND eff_dt > (
+        SELECT TO_CHAR(TO_DATE(cmn_parm_value, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+        FROM cmn_batch_parms
+        WHERE cmn_parm_grp_id = 'EPCA' 
+          AND cmn_parm_ent_id = 'U2CDT' 
+          AND cmn_parm_seq_no = +1 
+        FETCH FIRST 1 ROW ONLY
+    )
+    
+ORDER BY 
+    cust_id_no, 
+    acct_no, 
+    mtn, 
+    eff_dt;
