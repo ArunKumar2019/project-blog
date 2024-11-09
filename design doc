@@ -1,0 +1,397 @@
+					ACST610P JCL
+CA7:  
+Schedule: Daily @ 00:30
+Schedule ID: 010
+Triggers: n/a
+Triggered by: n/a
+Requirements: n/a
+Successors: ACMM086P
+Dataset Demand: n/a
+
+Overview:  Daily batch process to send the feed to commissions system.   
+Complexity: Medium           
+
+
+Step JS010: Unload tables
+ACSTNP.ACST610P.SFOFFR.UNLOAD
+SELECT SF_OFFERING_ID         
+      , PCKGE_ID               
+  FROM AQT1.SF_OFFR           
+ WHERE SF_STAT IN ('A','E')   
+   AND SF_OFFERING_ID <> 66332
+ACSTNP.ACST610P.PCKGEGID.UNLOAD
+SELECT PCKGE_ID                    
+  FROM AQT1.ENHANCED_SRV_PCKGE     
+ WHERE PKG_GROUP_CD = 'EQ'         
+   AND PCKGE_END_DT >= CURRENT DATE
+ACSTNP.ACST610P.PRODID.UNLOAD
+SELECT SVC_PROD_ID                        
+  FROM AQT1.SVC_PROD_CAT                  
+ WHERE PRC_CAT_CD    = 'EQ'               
+   AND SVC_PROD_CAT_END_DT >= CURRENT DATE
+
+
+
+ACSTNP.ACST610P.LPTS.UNLOAD
+SELECT CMN_PARM_VALUE                 
+  FROM AQT1.CMN_BATCH_PARMS          
+ WHERE CMN_PARM_GRP_ID       = 'EPCA'
+   AND CMN_PARM_ENT_ID       = 'LPTS'
+   AND CMN_PARM_SEQ_NO       = +1  
+
+Note: File contains timestamp for ex: 2022-12-21-07.29.22.175766  
+
+ACSTNP.ACST610P.LPDT.UNLOAD
+SELECT CMN_PARM_VALUE                 
+  FROM AQT1.CMN_BATCH_PARMS          
+ WHERE CMN_PARM_GRP_ID       = 'EPCA'
+   AND CMN_PARM_ENT_ID       = 'LPDT'
+   AND CMN_PARM_SEQ_NO       = +2 
+
+Note: File contains date for ex: 12/22/2022  
+   
+ACSTNP.ACST610P.U2CDT.UNLOAD
+SELECT CMN_PARM_VALUE                  
+  FROM AQT1.CMN_BATCH_PARMS           
+ WHERE CMN_PARM_GRP_ID       = 'EPCA' 
+   AND CMN_PARM_ENT_ID       = 'U2CDT'
+   AND CMN_PARM_SEQ_NO       = +1  
+
+Note: File contains date for ex: 12/22/2022
+
+   
+ACSTNP.ACST610P.UDPDT.UNLOAD
+SELECT CMN_PARM_VALUE                  
+  FROM AQT1.CMN_BATCH_PARMS           
+ WHERE CMN_PARM_GRP_ID       = 'EPCA' 
+   AND CMN_PARM_ENT_ID       = 'UDPDT'
+   AND CMN_PARM_SEQ_NO       = +1     
+
+Note: File contains date for ex: 12/22/2022
+
+ACSTNP.ACST610P.CTRCTMS.UNLOAD
+SELECT CNTRCT_TERMS_ID             
+  FROM AQT1.CNTRCT_TERMS          
+ WHERE CTERMS_TERM          >= +24
+   AND CNTRCT_TYP_CD         = 'E'
+
+ACSTNP.ACST610P.CRTS.UNLOAD
+SELECT CURRENT TIMESTAMP
+FROM SYSIBM.SYSDUMMY1   
+FETCH FIRST 1 ROWS ONLY 
+WITH UR;
+
+Step JS020: Formatting the input files                 
+Input1: ACSTNP.ACST610P.LPTS.UNLOAD
+Input2: ACSTNP.ACST610P.LPDT.UNLOAD
+Input3: ACSTNP.ACST610P.CRTS.UNLOAD
+Input4: ACSTNP.ACST610P.U2CDT.UNLOAD
+Input5: ACSTNP.ACST610P.UDPDT.UNLOAD
+Output1: ACSTNP.ACST610P.LPTS.INCLUD.TS
+Output2: ACSTNP.ACST610P.LPDT.INCLUD.DT
+Output3: ACSTNP.ACST610P.CRTS.INCLUD.TS
+Output4: ACSTNP.ACST610P.U2CDT.INCLUD.DT
+Output5: ACSTNP.ACST610P.UDPDT.INCLUD.DT
+Output6: ACSTNP.ACST610P.UDPDT.INCLUD.TS
+
+Output1 layout: ‘value of ACSTNP.ACST610P.LPTS.UNLOAD’
+Example: 
+     '2023-01-04-23.56.07.584510'
+
+Output2 layout: ‘value of ACSTNP.ACST610P.LPDT.UNLOAD’
+Example: 
+     '01/04/2023'
+
+Output3 layout: ‘(value of ACSTNP.ACST610P.CRTS.UNLOAD (1:11)) 00.00.00.000000’
+Example: 
+     '2023-01-06-00.00.00.000000'
+
+Output4 layout: ‘value of ACSTNP.ACST610P.U2CDT.UNLOAD’
+Example: 
+     '01/03/2023' 
+
+Output5 layout: ‘value of ACSTNP.ACST610P.UDPDT.UNLOAD’
+Example: 
+     '01/04/2023'
+
+Output6 layout: ‘value of ACSTNP.ACST610P.UDPDT.UNLOAD (**in the format of 2022-12-22)-00.00.00.000000’
+Example: 
+     '2023-01-04-00.00.00.000000' 
+
+Step JS030A: Joining is on package_id
+Input1: ACSTNP.ACST610P.SFOFFR.UNLOAD
+Input2: ACSTNP.ACST610P.PCKGEGID.UNLOAD
+Output: ACSTNP.ACST610P.SFOOFR.OUT
+ControlCard:
+JOINKEYS F1=IN1,FIELDS(12,11,A)
+JOINKEYS F2=IN2,FIELDS(1,11,A) 
+SORT FIELDS=COPY               
+REFORMAT FIELDS=(F1:1,11)      
+Note: Join on PCKGE_ID. Get matched records. Output file contains matched records from input1. Output record contains sf_offering_id from input1 file.
+
+Step JS030B: Sorting is on svc_prod_id in ascending order and remove the duplicates if any.
+Input: ACSTNP.ACST610P.PRODID.UNLOAD
+Output: ACSTNP.ACST610P.PRODID.LIST
+ControlCard:
+SORT FIELDS=(1,11,CH,A)        
+SUM FIELDS=NONE                
+OUTREC FIELDS=(1:1,11,12:C',') 
+Output layout: “value of svc_prod_id,”
+
+
+
+Step JS030C: Sorting is on sf_offering_id in ascending order and remove the duplicates if any.
+Input: ACSTNP.ACST610P.SFOOFR.OUT
+Output: ACSTNP.ACST610P.SFOS.LIST
+ControlCard:
+SORT FIELDS=(1,11,CH,A)        
+SUM FIELDS=NONE                
+OUTREC FIELDS=(1:1,11,12:C',') 
+   
+Output layout: “value of sf_offering_id,”
+
+Step JS030D: Sorting is on CNTRCT_TERMS_ID in ascending order and remove the duplicates if any
+Input: ACSTNP.ACST610P.CTRCTMS.UNLOAD
+Output: ACSTNP.ACST610P.CTRCTMS.LIST
+ControlCard:
+SORT FIELDS=(1,6,CH,A)       
+SUM FIELDS=NONE              
+OUTREC FIELDS=(1:1,6,7:C',') 
+   
+Output layout: “value of CNTRCT_TERMS_ID,”
+
+Step JS040: Formatting the input files
+Input1: ACSTNP.ACST610P.SFOS.LIST
+Input2: ACSTNP.ACST610P.PRODID.LIST
+Input3: ACSTNP.ACST610P.CTRCTMS.LIST
+Output1: ACSTNP.ACST610P.SFOF.LIST
+Output2: ACSTNP.ACST610P.SPOF.LIST
+Output3: ACSTNP.ACST610P.TERMS.LIST
+
+Output1 layout: “5 spaces value of ACSTNP.ACST610P.SFOS.LIST 63 spaces” 
+Output2 layout: “5 spaces value of ACSTNP.ACST610P.PRODID.LIST 63 spaces”
+Output3 layout: “5 spaces value of ACSTNP.ACST610P.CTRCTMS.LIST 68 spaces”
+
+
+
+
+Step JS050: Unload tables
+ACSTNP.ACST610P.SFMTN.UNLOAD
+SELECT CUST_ID_NO           
+      , ACCT_NO              
+      , SF_OFFERING_ID       
+      , OUTLET_ID            
+      , SLS_REP_ID           
+      , CREATE_DT            
+      , EFF_DT               
+      , NPA                  
+      , NXX                  
+      , TLN                  
+      , MTN_EFF_DT           
+  FROM AQPRD.SF_MTN         
+ WHERE END_DT = '12/31/9999'
+   AND SF_OFFERING_ID IN ((values present in ACSTNP.ACST610P.SFOF.LIST) 0)
+AND CREATE_DT < CURRENT DATE
+AND CREATE_DT > (value present in ACSTNP.ACST610P.LPDT.INCLUD.DT)
+
+ACSTNP.ACST610P.BASPD.UNLOAD
+SELECT CUST_ID_NO                            
+      ,ACCT_NO                               
+      ,SVC_PROD_ID                           
+      ,OUTLET_ID                             
+      ,SLS_REP_ID                            
+      ,CREATE_TS                             
+      ,BA_SVC_PROD_EFF_TS                    
+  FROM AQPRD.BL_ACCT_SVC_PROD                
+ WHERE BA_SVC_PROD_END_TS > CURRENT TIMESTAMP
+   AND SVC_PROD_ID IN ((values present in ACSTNP.ACST610P.SPOF.LIST) 0)
+AND CREATE_TS < (value present in ACSTNP.ACST610P.CRTS.INCLUD.TS)
+AND CREATE_TS > (value present in ACSTNP.ACST610P.LPTS.INCLUD.TS)
+                     
+ACSTNP.ACST610P.CUSCTRCT.UNLOAD
+SELECT EFF_DT               
+      ,CUST_ID_NO           
+      ,ACCT_NO              
+      ,SLS_REP_ID           
+      ,OUTLET_ID            
+      ,MTN_EFF_DT           
+      ,NPA                  
+      ,NXX                  
+      ,TLN                  
+  FROM AQPRD.CUST_CONTRACT  
+ WHERE END_DT > CURRENT DATE
+   AND CNTRCT_TERMS_ID IN ((values present in ACSTNP.ACST610P.TERMS.LIST) 0) 
+AND EFF_DT < CURRENT DATE
+AND EFF_DT > (value present in ACSTNP.ACST610P.U2CDT.INCLUD.DT)
+ 
+
+
+
+
+ACSTNP.ACST610P.INSTLN.UNLOAD
+SELECT INSTALL_LOAN_NO               
+      ,LOAN_SYS_CRT_DT               
+      ,OUTLET_ID                     
+      ,CUST_ID_NO                    
+      ,ACCT_NO                       
+      ,NPA                           
+      ,NXX                           
+      ,TLN                           
+      ,MTN_EFF_DT                    
+      ,EQ_ORD_NO                     
+      ,NETACE_LOC_ID                 
+  FROM AQPRD.INSTALLMENT_LOAN        
+ WHERE LOAN_SYS_CRT_DT < CURRENT DATE
+   AND LOAN_SYS_CRT_DT > (value present in ACSTNP.ACST610P.UDPDT.INCLUD.DT)
+            
+ACSTNP.ACST610P.INSTLNST.UNLOAD
+SELECT INSTALL_LOAN_NO                                  
+      , LOAN_STAT_EFF_TS                                 
+  FROM AQPRD.INSTALL_LOAN_STATUS                        
+ WHERE INSTL_LOAN_STAT_CD IN ('A','B','P')            
+   AND LOAN_STAT_END_TS = '9999-12-31-23.59.59.999999'
+   AND LOAN_STAT_EFF_TS < (value present in ACSTNP.ACST610P.CRTS.INCLUD.TS)
+AND LOAN_STAT_EFF_TS > (value present in ACSTNP.ACST610P.UDPDT.INCLUD.TS)                               
+
+
+
+ACSTNP.ACST610P.EQPORDST.UNLOAD
+SELECT NPA                                    
+      , NXX                                    
+      , TLN                                    
+      , EQ_ORD_NO                              
+      , NETACE_LOC_ID                          
+  FROM AQPRD.EQ_ORDER_STATUS                  
+ WHERE EO_STAT_EFF_TMSTMP <= CURRENT TIMESTAMP
+       AND EO_STAT_CD = 'C'          
+       AND ESN_CHG_RSN_CD = 'CE'         
+
+Step JS051A: Joining is on MTN, EQ_ORD_NO, NETACE_LOC_ID
+Input1: ACSTNP.ACST610P.INSTLN.UNLOAD
+Input2: ACSTNP.ACST610P.EQPORDST.UNLOAD
+Output: ACSTNP.ACST610P.INSTLN.CPE.DEL
+Output will have unmatched records from input1 only
+Output layout:
+INSTALL_LOAN_NO               
+LOAN_SYS_CRT_DT               
+OUTLET_ID                     
+CUST_ID_NO                    
+ACCT_NO                       
+NPA                           
+NXX                           
+TLN                           
+MTN_EFF_DT                    
+
+
+Step JS051B: Joining is on INSTALL_LOAN_NO and LOAN_SYS_CRT_DT               
+Input1: ACSTNP.ACST610P.INSTLN.CPE.DEL
+Input2: ACSTNP.ACST610P.INSTLNST.UNLOAD
+Output: ACSTNP.ACST610P.INSTLN.JOINED
+Output will have matched records from input1 file  
+Output layout will be same as input1.
+
+Step JS055: Formatting the input files
+Input1: ACSTNP.ACST610P.SFMTN.UNLOAD
+Input2: ACSTNP.ACST610P.BASPD.UNLOAD
+Input3: ACSTNP.ACST610P.CUSCTRCT.UNLOAD
+Input4: ACSTNP.ACST610P.INSTLN.JOINED
+Output1: ACSTNP.ACST610P.SFMTN.INPUT
+Output2: ACSTNP.ACST610P.BASPD.INPUT
+Output3: ACSTNP.ACST610P.CUSCTRCT.INPUT
+Output4: ACSTNP.ACST610P.INSTLN.INPUT
+
+Output1 layout: It contains input1 values
+SORT FIELDS=COPY                                  
+OUTREC FIELDS=(1,33,11X,34,26,26X,60,10,26X,70,20) 
+CUST_ID_NO, ACCT_NO, SF_OFFERING_ID, 11 spaces, OUTLET_ID, SLS_REP_ID, CREATE_DT, 26 spaces, EFF_DT, 26 spaces, NPA, NXX,      TLN, MTN_EFF_DT           
+
+Output2 layout: It contains input2 values 
+SORT FIELDS=COPY                                            
+OUTREC FIELDS=(1,22,11X,23,11,34,16,10X,50,26,10X,76,26,20X)
+
+CUST_ID_NO, ACCT_NO, 11 spaces, SVC_PROD_ID, OUTLET_ID,     SLS_REP_ID, 10 spaces, CREATE_TS, 10 spaces,   BA_SVC_PROD_EFF_TS, 20 spaces
+
+Output3 layout: It contains input3 values 
+ SORT FIELDS=COPY                                              
+ OUTREC FIELDS=(11,22,22X,38,11,33,5,36X,01,10,26X,59,10,49,10)
+
+CUST_ID_NO, ACCT_NO, 22 spaces, OUTLET_ID, SLS_REP_ID, 36 spaces, EFF_DT, 26 spaces, NPA, NXX, TLN, MTN_EFF_DT               
+Output4 layout: It contains input4 values
+SORT FIELDS=COPY                                   
+OUTREC FIELDS=(33,22,22X,22,11,41X,12,10,26X,55,20)
+CUST_ID_NO, ACCT_NO, 22 spaces, OUTLET_ID, 41 spaces, LOAN_SYS_CRT_DT, 26 spaces, NPA, NXX, TLN, MTN_EFF_DT                        
+
+Step JS060: 
+Input1: ACSTNP.ACST610P.SFMTN.INPUT
+Input2: ACSTNP.ACST610P.BASPD.INPUT
+Input3: ACSTNP.ACST610P.CUSCTRCT.INPUT
+Input4: ACSTNP.ACST610P.INSTLN.INPUT
+Output1: ACSTNP.ACST610P.SFOF.LINES
+Output2: ACSTNP.ACST610P.SPOF.LINES
+Output3: ACSTNP.ACST610P.CUSCTRCT.LINES
+Output4: ACSTNP.ACST610P.INSTLN.LINES
+
+Output1 layout: Sort input1 file based on CREATE_DT in ascending order.
+Layout will be same as input1 and at the end append the string “SFO”  
+
+Output2 layout: Sort input2 file based on CREATE_TS in ascending order.
+Layout will be same as input2 and at the end append the string “SPO”  
+
+Output3 layout: Layout will be same as input3 and at the end append the string “U2C”  
+
+Output4 layout: Layout will be same as input4 and at the end append the string “UDP”
+  
+
+Step JS065: Merge SFO and SPO files of JS060
+Input1: ACSTNP.ACST610P.SFOF.LINES
+Input2: ACSTNP.ACST610P.SPOF.LINES
+Output: ACSTNP.ACST610P.EPCA.INPUT
+
+Step JS066: Merge U2C and UDP files of JS060.
+Sorting is on cust-id-no, acct-no, MTN, eff-dt in ascending order.
+Remove the duplicates if any.
+Input1: ACSTNP.ACST610P.CUSCTRCT.LINES
+Input2: ACSTNP.ACST610P.INSTLN.LINES
+Output: ACSTNP.ACST610P.UPGD.INPUT
+
+Step JS067A: Joining is on cust-id-no, acct-no, MTN, eff-dt 
+Input1: ACSTNP.ACST610P.UPGD.INPUT
+Input2: ACSTNP.ACST610P.SFOF.LINES
+Output1: ACSTNP.ACST610P.UPGD.SFO.PASS
+Output will have unmatched records from input1 file only
+Layout will be same as input1
+
+Step JS067B: Joining is on cust-id-no, acct-no, eff-dt
+Input1: ACSTNP.ACST610P.UPGD.SFO.PASS 
+Input2: ACSTNP.ACST610P.SPOF.LINES
+Output: ACSTNP.ACST610P.UPGD.DEDUP
+Output will have unmatched records from input1 file only
+Layout will be same as input1
+
+
+
+Step JS067C: Sorting is on eff_dt in ascending order
+Input: ACSTNP.ACST610P.UPGD.DEDUP
+Output: ACSTNP.ACST610P.UPGD.SORT
+Output layout will be same as input
+
+Step JS067D: Copy the records from input file to output file
+Input: ACSTNP.ACST610P.UPGD.SORT
+Output: ACSTNP.ACST610P.EPCA.INPUT
+
+Step JS095: Execute the program ACST610P 
+Input: ACSTNP.ACST610P.EPCA.INPUT
+Output1: ACSTNP.ACST610P.COMMISN.FILE
+Output2: ACSTNP.ACST610P.ERROR.FILE
+Output3: ACSTNP.ACST610P.REPORT.FILE  
+
+Step JS100: Backup the commission file
+ACSTNP.ACST610P.COMMISN.FILE -> ACSTNP.ACST610P.COMMISN.FILE.BKP (+1)
+
+Step JS110: Backup the error file
+ACSTNP.ACST610P.ERROR.FILE -> ACSTNP.ACST610P.ERROR.FILE.BKP (+1)
+Step JS120: Backup the report file
+ACSTNP.ACST610P.REPORT.FILE -> ACSTNP.ACST610P.REPORT.FILE.BKP (+1)
+
+Step JS130: Backup the input file
+ACSTNP.ACST610P.EPCA.INPUT -> ACSTNP.ACST610P.EPCA.INPUT.BKP (+1)
