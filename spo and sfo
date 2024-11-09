@@ -109,3 +109,92 @@ ON upgd.cust_id_no = sfoflines.CUST_ID_NO
    AND upgd.mtn = sfoflines.MTN
    AND upgd.eff_dt = sfoflines.EFF_DT
 ORDER BY cust_id_no, acct_no, mtn, eff_dt;
+-------------------------------------------------------------------------------------------------------------------------------------------------------
+
+updated response 
+
+WITH upgd AS (
+    -- Data from previous queries with "UDP" and "U2C" type_status values
+    SELECT 
+        cust_id_no,
+        acct_no,
+        NULL AS SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        outlet_id,
+        sls_rep_id,
+        loan_sys_crt_dt AS create_dt,
+        eff_dt,
+        mtn,
+        mtn_eff_dt,
+        'UDP' AS type_status -- Ensuring "UDP" status is retained
+    FROM installment_loan_loan_no
+    UNION ALL
+    SELECT
+        cust_id_no,
+        acct_no,
+        NULL AS SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        outlet_id,
+        sls_rep_id,
+        NULL AS create_dt,
+        eff_dt,
+        mtn,
+        mtn_eff_dt,
+        'U2C' AS type_status -- Retaining "U2C" status as well
+    FROM cust_contract
+),
+sfoflines AS (
+    -- New data with 'SFO' type_status
+    SELECT 
+        CUST_ID_NO,
+        ACCT_NO,
+        SF_OFFERING_ID,
+        NULL AS SVC_PROD_ID,
+        OUTLET_ID,
+        SLS_REP_ID,
+        CREATE_DT,
+        EFF_DT,
+        MTN,
+        MTN_EFF_DT,
+        'SFO' AS type_status
+    FROM SF_MTN
+    WHERE END_DT = '9999-12-31' 
+      AND SF_OFFERING_ID IN (
+          SELECT DISTINCT SF_OFFERING_ID 
+          FROM SF_OFFR sf 
+          INNER JOIN ENHANCED_SRV_PCKGE pd ON sf.PCKGE_ID = pd.PCKGE_ID 
+          WHERE sf.SF_STAT IN ('A', 'E') 
+            AND sf.SF_OFFERING_ID <> 6633 
+            AND pd.PKG_GROUP_CD = 'EQ' 
+            AND pd.PCKGE_END_DT >= TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+      )
+      AND CREATE_DT < TO_CHAR(SYSDATE, 'YYYY-MM-DD')
+      AND CREATE_DT > (
+          SELECT TO_CHAR(TO_DATE(CMN_PARM_VALUE, 'MM/DD/YYYY'), 'YYYY-MM-DD')
+          FROM CMN_BATCH_PARMS 
+          WHERE CMN_PARM_GRP_ID = 'EPCA' 
+            AND CMN_PARM_ENT_ID = 'LPDT' 
+            AND CMN_PARM_SEQ_NO = 2 
+          FETCH FIRST 1 ROW ONLY
+      )
+)
+-- Full outer join to include unmatched records from both upgd and sfoflines
+SELECT 
+    COALESCE(upgd.cust_id_no, sfoflines.CUST_ID_NO) AS cust_id_no,
+    COALESCE(upgd.acct_no, sfoflines.ACCT_NO) AS acct_no,
+    COALESCE(upgd.SF_OFFERING_ID, sfoflines.SF_OFFERING_ID) AS SF_OFFERING_ID,
+    COALESCE(upgd.SVC_PROD_ID, sfoflines.SVC_PROD_ID) AS SVC_PROD_ID,
+    COALESCE(upgd.outlet_id, sfoflines.OUTLET_ID) AS outlet_id,
+    COALESCE(upgd.sls_rep_id, sfoflines.SLS_REP_ID) AS sls_rep_id,
+    COALESCE(upgd.create_dt, sfoflines.CREATE_DT) AS create_dt,
+    COALESCE(upgd.eff_dt, sfoflines.EFF_DT) AS eff_dt,
+    COALESCE(upgd.mtn, sfoflines.MTN) AS mtn,
+    COALESCE(upgd.mtn_eff_dt, sfoflines.MTN_EFF_DT) AS mtn_eff_dt,
+    COALESCE(upgd.type_status, sfoflines.type_status) AS type_status
+FROM upgd
+FULL OUTER JOIN sfoflines 
+ON upgd.cust_id_no = sfoflines.CUST_ID_NO
+   AND upgd.acct_no = sfoflines.ACCT_NO
+   AND upgd.mtn = sfoflines.MTN
+   AND upgd.eff_dt = sfoflines.EFF_DT
+ORDER BY cust_id_no, acct_no, mtn, eff_dt;
