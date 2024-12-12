@@ -1,0 +1,65 @@
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+
+public class DateUtils {
+
+    public static String reduceOneYear(String dateStr) {
+        try {
+            // Define the date format
+            DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+            
+            // Parse the input date string to LocalDate
+            LocalDate date = LocalDate.parse(dateStr, formatter);
+            
+            // Subtract one year
+            LocalDate reducedDate = date.minusYears(1);
+            
+            // Return the resulting date as a string
+            return reducedDate.format(formatter);
+        } catch (DateTimeParseException e) {
+            // Handle invalid date format
+            return "Invalid date format. Expected format: yyyy-MM-dd";
+        }
+    }
+
+    public static void main(String[] args) {
+        // Example usage
+        String inputDate = "2023-12-12";
+        String result = reduceOneYear(inputDate);
+        System.out.println("Reduced date: " + result); // Output: 2022-12-12
+    }
+}
+
+
+
+ private Map<String,List<String>> getVzwSvcProcRule(String vzwSvcCd, NamedParameterJdbcTemplate namedJdbcTemplate, JobConfigModel jobConfig){
+            try {
+                String query = "SELECT pk1_value as VZW_RULE_TYP_VAL_CHAR ,ck4_value as VZW_SVC_RULE_EFF_TS  FROM reference_xref  WHERE CK1_VALUE = :vzwSvcCd   AND CK2_VALUE   = 'SP002' ";
+                MapSqlParameterSource custParam = new MapSqlParameterSource();
+                custParam.addValue("vzwSvcCd", vzwSvcCd);
+
+                Map<String, Object> result = namedJdbcTemplate.query(query, custParam,
+                        new ResultSetExtractor<Map<String, Object>>() {
+                            Map<String, Object> vzwDetails = new HashMap<>();
+                            List<String> efftsList=new ArrayList<>();
+                            List<String> typValChar=new ArrayList<>();
+                            @Override
+                            public Map<String, Object> extractData(ResultSet rs) throws SQLException, DataAccessException {
+
+                                while (rs.next()) {
+                                        typValChar.add( rs.getString("VZW_RULE_TYP_VAL_CHAR"));
+                                        efftsList.add( rs.getString("VZW_SVC_RULE_EFF_TS"));
+
+                                }
+                                return vzwDetails;
+                            }
+                        });
+                if (result != null) {
+                    return result;
+                }
+                return null;
+            } catch (Exception e) {
+                log.error("SQL Exception on VzwSvcProcRule ", e);
+                throw e;
+            }
