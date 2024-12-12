@@ -63,3 +63,47 @@ public class DateUtils {
                 log.error("SQL Exception on VzwSvcProcRule ", e);
                 throw e;
             }
+
+
+
+
+
+private Map<String, List<String>> getVzwSvcProcRule(String vzwSvcCd, NamedParameterJdbcTemplate namedJdbcTemplate, JobConfigModel jobConfig) {
+    try {
+        // SQL query
+        String query = "SELECT pk1_value AS VZW_RULE_TYP_VAL_CHAR, ck4_value AS VZW_SVC_RULE_EFF_TS " +
+                       "FROM reference_xref WHERE CK1_VALUE = :vzwSvcCd AND CK2_VALUE = 'SP002'";
+
+        // Set parameters
+        MapSqlParameterSource custParam = new MapSqlParameterSource();
+        custParam.addValue("vzwSvcCd", vzwSvcCd);
+
+        // Execute query and map results
+        return namedJdbcTemplate.query(query, custParam, new ResultSetExtractor<Map<String, List<String>>>() {
+            @Override
+            public Map<String, List<String>> extractData(ResultSet rs) throws SQLException {
+                // Initialize lists
+                List<String> typValChar = new ArrayList<>();
+                List<String> efftsList = new ArrayList<>();
+
+                // Process result set
+                while (rs.next()) {
+                    typValChar.add(rs.getString("VZW_RULE_TYP_VAL_CHAR"));
+                    efftsList.add(rs.getString("VZW_SVC_RULE_EFF_TS"));
+                }
+
+                // Prepare the map with extracted data
+                Map<String, List<String>> vzwDetails = new HashMap<>();
+                vzwDetails.put("VZW_RULE_TYP_VAL_CHAR", typValChar);
+                vzwDetails.put("VZW_SVC_RULE_EFF_TS", efftsList);
+
+                return vzwDetails;
+            }
+        });
+
+    } catch (Exception e) {
+        // Log and rethrow the exception
+        log.error("SQL Exception on VzwSvcProcRule ", e);
+        throw e;
+    }
+}
