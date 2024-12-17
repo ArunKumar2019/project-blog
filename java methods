@@ -107,3 +107,34 @@ private Map<String, List<String>> getVzwSvcProcRule(String vzwSvcCd, NamedParame
         throw e;
     }
 }
+
+
+
+
+ttttggggggggtttttttggggg
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+
+public class DateComparison {
+
+    public static void main(String[] args) {
+        // Example usage
+        String currentDate = LocalDate.now().toString(); // Automatically fetch current date
+        String inputDate = "2024-06-15"; // Example input date
+
+        boolean result = isCurrentDateGreaterThanInput(currentDate, inputDate);
+        System.out.println("Is current date greater than input date? " + result);
+    }
+
+    public static boolean isCurrentDateGreaterThanInput(String currentDateStr, String inputDateStr) {
+        // Define the date format
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+
+        // Parse the date strings into LocalDate objects
+        LocalDate currentDate = LocalDate.parse(currentDateStr, formatter);
+        LocalDate inputDate = LocalDate.parse(inputDateStr, formatter);
+
+        // Compare the dates and return the result
+        return currentDate.isAfter(inputDate);
+    }
+}
