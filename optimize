@@ -1,0 +1,71 @@
+WITH Reference_SVC_PROD_CAT AS (
+    SELECT 
+        pk1_value AS svc_prod_id, 
+        ck1_value AS prc_cat_cd 
+    FROM ORB2C_VZW_REPT.reference_xref 
+    WHERE source_table = 'SVC_PROD_CAT' 
+      AND ck1_value IN ('DATAPROMO', 'DATAGIFT', 'DATAPERK', 'DATABOOST', 'DATABANK') 
+      AND nk2_value = '9999-12-31'
+),
+Reference_SPLAN AS (
+    SELECT 
+        pk1_value AS splan_id_no, 
+        nk3_value AS SPLAN_CAT_CD 
+    FROM ORB2C_VZW_REPT.reference_xref 
+    WHERE source_table = 'SPLAN'
+),
+Filtered_ACCT_SVC_PROD AS (
+    SELECT * 
+    FROM ORB2C_VZW_REPT.BL_ACCT_SVC_PROD 
+    WHERE TO_DATE(BA_SVC_PROD_END_TS, 'YYYY-MM-DD') > CURRENT_DATE
+),
+Filtered_SPLAN AS (
+    SELECT * 
+    FROM ORB2C_VZW_REPT.BL_ACCT_SPLAN 
+    WHERE BA_SPLAN_END_DT = '9999-12-31'
+),
+Filtered_CUST_BL_CYCLE AS (
+    SELECT * 
+    FROM ORB2C_VZW_REPT.CUST_BL_CYCLE 
+    WHERE END_DT = '9999-12-31'
+)
+SELECT 
+    A.CUST_ID_NO, 
+    A.ACCT_NO, 
+    A.SVC_PROD_ID, 
+    A.BA_SVC_PROD_EFF_TS, 
+    A.SVC_PROD_UNIQUE_ID, 
+    A.BA_SVC_PROD_END_TS, 
+    A.DB_USERID, 
+    A.DB_TMSTAMP, 
+    B.prc_cat_cd, 
+    C.SPLAN_ID_NO, 
+    C.BA_SPLAN_EFF_DT, 
+    D.SPLAN_CAT_CD, 
+    E.BL_CYC_NO 
+FROM Filtered_ACCT_SVC_PROD A
+JOIN Reference_SVC_PROD_CAT B ON A.SVC_PROD_ID = B.svc_prod_id
+JOIN Filtered_SPLAN C ON A.CUST_ID_NO = C.CUST_ID_NO AND A.ACCT_NO = C.ACCT_NO
+JOIN Reference_SPLAN D ON C.SPLAN_ID_NO = D.splan_id_no AND D.SPLAN_CAT_CD IN ('60', '61')
+JOIN Filtered_CUST_BL_CYCLE E ON A.CUST_ID_NO = E.CUST_ID_NO
+
+UNION 
+
+SELECT 
+    A.CUST_ID_NO, 
+    A.ACCT_NO, 
+    A.SVC_PROD_ID, 
+    A.BA_SVC_PROD_EFF_TS, 
+    A.SVC_PROD_UNIQUE_ID, 
+    A.BA_SVC_PROD_END_TS, 
+    A.DB_USERID, 
+    A.DB_TMSTAMP, 
+    'SAFETYMODE' AS prc_cat_cd, 
+    C.SPLAN_ID_NO, 
+    C.BA_SPLAN_EFF_DT, 
+    D.SPLAN_CAT_CD, 
+    E.BL_CYC_NO 
+FROM Filtered_ACCT_SVC_PROD A
+JOIN Filtered_SPLAN C ON A.CUST_ID_NO = C.CUST_ID_NO AND A.ACCT_NO = C.ACCT_NO AND A.SVC_PROD_ID = '682'
+JOIN Reference_SPLAN D ON C.SPLAN_ID_NO = D.splan_id_no AND D.SPLAN_CAT_CD = '56'
+JOIN Filtered_CUST_BL_CYCLE E ON A.CUST_ID_NO = E.CUST_ID_NO;
