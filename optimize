@@ -159,6 +159,51 @@ WHERE
         a.bl_typ_cd = 'C'
     AND a.end_dt = '9999-12-31'    
     
-    
+---------------------------------------------------------------------------------------------------------------------------------------------------
+omncp
+
+
+
+SELECT
+    a.cust_id_no         AS cust_id_no,
+    a.acct_no            AS acct_no,
+    a.mtn                AS mtn,
+    b.ln_of_svc_id_no_p2 AS ln_of_svc_id_no_p2,
+    b.ln_of_svc_id_no_p1 AS ln_of_svc_id_no_p1,
+    b.bill_sys_id        AS bill_sys_id
+FROM
+         bl_acct_customer_mtn a
+    JOIN (
+        SELECT
+            bill_sys_id,
+            ln_of_svc_id_no_p2,
+            ln_of_svc_id_no_p1,
+            mtn
+        FROM
+            vzw_reporting.ln_prim_id_mdn
+        WHERE
+            to_timestamp(ln_mdn_end_ts, 'YYYY-MM-DD-HH24.MI:SS.FF6') > current_timestamp
+    ) b ON a.mtn = b.mtn
+    JOIN (
+        SELECT
+            ln_of_svc_id_no_p2,
+            ln_of_svc_id_no_p1
+        FROM
+            ln_of_svc
+        WHERE
+            spcl_pgm_enroll_stat_list LIKE '%spcl_pgm_cd=VCX%'
+            AND spcl_pgm_enroll_stat_list LIKE '%enroll_stat_rsn_cd=RSTR%'
+            AND spcl_pgm_enroll_stat_list LIKE '%enroll_stat_cd=B%'
+    ) c ON b.ln_of_svc_id_no_p1 = c.ln_of_svc_id_no_p1
+           AND b.ln_of_svc_id_no_p2 = c.ln_of_svc_id_no_p2
+WHERE
+        a.curr_pri_ind = 'C'
+    AND a.bl_typ_cd = 'C'
+    AND a.cust_mtn_stat_cd IN ( 'A', 'AC', 'AR', 'AT', 'B',
+                                'S' )
+    AND end_dt = '9999-12-31'
+
+
+
     
     
