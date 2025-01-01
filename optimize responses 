@@ -145,3 +145,85 @@ WHERE
     AND a.bl_typ_cd = 'C'
     AND a.cust_mtn_stat_cd IN ('A', 'AC', 'AR', 'AT', 'B', 'S')
     AND a.end_dt = '9999-12-31';
+
+
+
+
+133p
+
+WITH ref_xref_svc_prod AS (
+    SELECT
+        pk1_value AS svc_prod_id,
+        ck1_value AS prc_cat_cd
+    FROM
+        reference_xref
+    WHERE
+        source_table = 'SVC_PROD_CAT'
+        AND ck1_value IN ('DATAPROMO', 'DATAGIFT', 'DATAPERK', 'DATABOOST', 'DATABANK')
+        AND nk2_value = '9999-12-31'
+),
+ref_xref_splan AS (
+    SELECT
+        pk1_value AS splan_id_no,
+        nk3_value AS splan_cat_cd
+    FROM
+        reference_xref
+    WHERE
+        source_table = 'SPLAN'
+),
+base_query AS (
+    SELECT
+        a.cust_id_no,
+        a.acct_no,
+        a.svc_prod_id,
+        a.ba_svc_prod_eff_ts,
+        a.svc_prod_unique_id,
+        a.ba_svc_prod_end_ts,
+        a.db_userid,
+        a.db_tmstamp,
+        b.prc_cat_cd,
+        c.splan_id_no,
+        c.ba_splan_eff_dt,
+        d.splan_cat_cd,
+        e.bl_cyc_no
+    FROM
+        bl_acct_svc_prod a
+    LEFT JOIN ref_xref_svc_prod b ON a.svc_prod_id = b.svc_prod_id
+    JOIN bl_acct_splan c ON a.cust_id_no = c.cust_id_no
+                          AND a.acct_no = c.acct_no
+                          AND c.ba_splan_end_dt = '9999-12-31'
+    JOIN ref_xref_splan d ON c.splan_id_no = d.splan_id_no
+    JOIN cust_bl_cycle e ON a.cust_id_no = e.cust_id_no
+                          AND e.end_dt = '9999-12-31'
+    WHERE
+        a.ba_svc_prod_end_ts > CURRENT_TIMESTAMP
+)
+SELECT * FROM base_query
+WHERE prc_cat_cd IS NOT NULL
+UNION
+SELECT
+    a.cust_id_no,
+    a.acct_no,
+    a.svc_prod_id,
+    a.ba_svc_prod_eff_ts,
+    a.svc_prod_unique_id,
+    a.ba_svc_prod_end_ts,
+    a.db_userid,
+    a.db_tmstamp,
+    'SAFETYMODE' AS prc_cat_cd,
+    c.splan_id_no,
+    c.ba_splan_eff_dt,
+    d.splan_cat_cd,
+    e.bl_cyc_no
+FROM
+    bl_acct_svc_prod a
+JOIN bl_acct_splan c ON a.cust_id_no = c.cust_id_no
+                      AND a.acct_no = c.acct_no
+                      AND c.ba_splan_end_dt = '9999-12-31'
+                      AND a.svc_prod_id = '682'
+JOIN ref_xref_splan d ON c.splan_id_no = d.splan_id_no
+                      AND d.splan_cat_cd <> '56'
+JOIN cust_bl_cycle e ON a.cust_id_no = e.cust_id_no
+                      AND e.end_dt = '9999-12-31'
+WHERE
+    a.ba_svc_prod_end_ts > CURRENT_TIMESTAMP;
