@@ -1,0 +1,114 @@
+WITH cmn_parm_values AS (
+    SELECT nk3_value AS cmn_parm_value
+    FROM reference_xref
+    WHERE source_table = 'CMN_BATCH_PARMS'
+      AND pk1_value = 'ACSTZTKP'
+      AND ck2_value = 'BLCYCNO'
+      AND ck3_value = 1
+),
+active_customers AS (
+    SELECT cust_id_no, bill_sys_id
+    FROM enterprise_customer
+    WHERE cust_stat_cd = 'A'
+      AND cust_typ_cd IN ('PE', 'ME', 'SL', 'BE', 'CI', 'DD', 'DJ', 'FA', 'FG', 'FL',
+                          'FM', 'FS', 'FT', 'FW', 'FX', 'HR', 'LG', 'LL', 'SG', 'SN',
+                          'SS', 'US', 'UU', 'WH')
+),
+active_accounts AS (
+    SELECT cust_id_no, acct_no, mtn
+    FROM bl_acct_customer_mtn
+    WHERE curr_pri_ind = 'C'
+      AND bl_typ_cd = 'C'
+      AND cust_mtn_stat_cd IN ('A', 'AC', 'AR', 'AT', 'B', 'S')
+      AND end_dt = '9999-12-31'
+),
+active_plans AS (
+    SELECT cust_id_no, acct_no, mtn, pplan_id_no
+    FROM pplan_mtn
+    WHERE pplan_id_no IN (26880, 26907, 26908, 26911, 26914, 26926, 39384, 39385, 39386,
+                          39387, 39388, 39390, 50420, 50427, 50428, 50430, 50431, 50432,
+                          50433, 50434)
+      AND end_dt = '9999-12-31'
+),
+vzw_rules AS (
+    SELECT pk1_value AS vzw_rule_typ_val_char,
+           nk4_value AS vzw_rule_typ_val_dec,
+           nk6_value AS vzw_rule_typ_val_num
+    FROM reference_xref
+    WHERE source_table = 'VZW_SVC_PROC_RULE'
+      AND ck1_value = 'MHS'
+      AND ck2_value = 'PRCUP'
+      AND nk3_value = 'SVC_PROD_ID'
+)
+SELECT
+    a.cust_id_no AS cust_id_no,
+    a.bl_cyc_no AS bl_cyc_no,
+    d.acct_no AS acct_no,
+    d.mtn AS mtn,
+    e.pplan_id_no AS pplan_id_no,
+    c.bill_sys_id AS bill_sys_id,
+    f.vzw_rule_typ_val_dec AS vzw_rule_typ_val_dec,
+    f.vzw_rule_typ_val_num AS vzw_rule_typ_val_num
+FROM cust_bl_cycle a
+JOIN cmn_parm_values b ON a.bl_cyc_no = b.cmn_parm_value
+JOIN active_customers c ON a.cust_id_no = c.cust_id_no
+JOIN active_accounts d ON c.cust_id_no = d.cust_id_no
+JOIN active_plans e ON d.cust_id_no = e.cust_id_no
+JOIN vzw_rules f ON f.vzw_rule_typ_val_char = CAST(e.pplan_id_no AS VARCHAR2(250))
+WHERE a.bl_typ_cd = 'C'
+  AND a.end_dt = '9999-12-31';
+
+________&&&&&&
+
+
+SELECT
+    a.cust_id_no           AS cust_id_no,
+    a.bl_cyc_no            AS bl_cyc_no,
+    d.acct_no              AS acct_no,
+    d.mtn                  AS mtn,
+    e.pplan_id_no          AS pplan_id_no,
+    c.bill_sys_id          AS bill_sys_id,
+    f.vzw_rule_typ_val_dec AS vzw_rule_typ_val_dec,
+    f.vzw_rule_typ_val_num AS vzw_rule_typ_val_num
+FROM
+    cust_bl_cycle a
+    -- Join with reference_xref for cmn_parm_value
+    JOIN reference_xref b
+        ON a.bl_cyc_no = b.nk3_value
+       AND b.source_table = 'CMN_BATCH_PARMS'
+       AND b.pk1_value = 'ACSTZTKP'
+       AND b.ck2_value = 'BLCYCNO'
+       AND b.ck3_value = 1
+    -- Join with enterprise_customer for active customers
+    JOIN enterprise_customer c
+        ON a.cust_id_no = c.cust_id_no
+       AND c.cust_stat_cd = 'A'
+       AND c.cust_typ_cd IN ('PE', 'ME', 'SL', 'BE', 'CI', 'DD', 'DJ', 'FA', 'FG', 'FL',
+                             'FM', 'FS', 'FT', 'FW', 'FX', 'HR', 'LG', 'LL', 'SG', 'SN',
+                             'SS', 'US', 'UU', 'WH')
+    -- Join with bl_acct_customer_mtn for active accounts
+    JOIN bl_acct_customer_mtn d
+        ON c.cust_id_no = d.cust_id_no
+       AND d.curr_pri_ind = 'C'
+       AND d.bl_typ_cd = 'C'
+       AND d.cust_mtn_stat_cd IN ('A', 'AC', 'AR', 'AT', 'B', 'S')
+       AND d.end_dt = '9999-12-31'
+    -- Join with pplan_mtn for active plans
+    JOIN pplan_mtn e
+        ON d.cust_id_no = e.cust_id_no
+       AND d.acct_no = e.acct_no
+       AND d.mtn = e.mtn
+       AND e.pplan_id_no IN (26880, 26907, 26908, 26911, 26914, 26926, 39384, 39385, 39386,
+                             39387, 39388, 39390, 50420, 50427, 50428, 50430, 50431, 50432,
+                             50433, 50434)
+       AND e.end_dt = '9999-12-31'
+    -- Join with reference_xref for VZW rules
+    JOIN reference_xref f
+        ON f.pk1_value = CAST(e.pplan_id_no AS VARCHAR2(250))
+       AND f.source_table = 'VZW_SVC_PROC_RULE'
+       AND f.ck1_value = 'MHS'
+       AND f.ck2_value = 'PRCUP'
+       AND f.nk3_value = 'SVC_PROD_ID'
+WHERE
+    a.bl_typ_cd = 'C'
+    AND a.end_dt = '9999-12-31';
