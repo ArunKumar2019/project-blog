@@ -256,3 +256,60 @@ FROM (
         AND TO_DATE(end_dt, 'YYYY-MM-DD') >= TO_DATE(eff_dt, 'YYYY-MM-DD')
         AND bl_typ_cd = 'C'
 ) B;
+-------------------------------------------------------------------------------------------------------------------------------
+
+322
+---
+       SELECT CUST_ID_NO,
+                ACCT_NO,
+                MEDIA_SUPPRESS_CD,
+                MED_SUPRS_STAT_CD,
+                SUPRS_STAT_EFF_TS,
+                SUPRS_STAT_RSN_CD,
+                SUPRS_STAT_END_TS
+          FROM BL_ACCT_SUPRS_STAT
+             WHERE MEDIA_SUPPRESS_CD  = 'AP'
+             AND   MED_SUPRS_STAT_CD  = 'IN'
+             AND SUPRS_STAT_EFF_TS <= CURRENT TIMESTAMP
+             AND SUPRS_STAT_END_TS >  CURRENT TIMESTAMP
+    ;
+
+         SELECT CUST_ID_NO,
+                ACCT_NO,
+                MEDIA_SUPPRESS_CD,
+                MED_SUPRS_STAT_CD,
+                SUPRS_STAT_EFF_TS,
+                SUPRS_STAT_RSN_CD,
+                SUPRS_STAT_END_TS
+             FROM BL_ACCT_SUPRS_STAT
+             WHERE MEDIA_SUPPRESS_CD  = 'AP'
+             AND   MED_SUPRS_STAT_CD  IN ('D','E')
+             AND   SUPRS_STAT_EFF_TS >=
+                     '2020-07-01-00.00.00.000000'
+             AND   SUPRS_STAT_END_TS =
+                     '9999-12-31-00.00.00.000000'
+           ;
+----------------------------------------------- optimized one
+SELECT
+    cust_id_no,
+    acct_no,
+    media_suppress_cd,
+    med_suprs_stat_cd,
+    suprs_stat_rsn_cd,
+    suprs_stat_eff_ts,
+    suprs_stat_end_ts
+FROM
+    bl_acct_suprs_stat
+WHERE
+        media_suppress_cd = 'AP'
+    AND ( ( med_suprs_stat_cd = 'IN'
+            AND suprs_stat_eff_ts <= to_char(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+            AND suprs_stat_end_ts > to_char(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6') )
+          OR ( med_suprs_stat_cd IN ( 'D', 'E' )
+               AND suprs_stat_eff_ts >= '2020-07-01'
+               AND suprs_stat_end_ts <= '9999-12-31' ) )
+
+
+
+
+
