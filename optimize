@@ -310,6 +310,36 @@ WHERE
                AND suprs_stat_end_ts <= '9999-12-31' ) )
 
 
+..........
 
+updated
+
+
+SELECT
+    cust_id_no,
+    acct_no,
+    media_suppress_cd,
+    med_suprs_stat_cd,
+    suprs_stat_rsn_cd,
+    suprs_stat_eff_ts,
+    suprs_stat_end_ts
+FROM
+    bl_acct_suprs_stat
+WHERE
+    media_suppress_cd = 'AP'
+    AND med_suprs_stat_cd = 'IN'
+    AND suprs_stat_eff_ts <= to_char(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+    AND suprs_stat_end_ts > to_char(current_timestamp, 'YYYY-MM-DD-HH24.MI.SS.FF6')
+    AND NOT EXISTS (
+        SELECT 1
+        FROM bl_acct_suprs_stat AS sub
+        WHERE
+            sub.cust_id_no = bl_acct_suprs_stat.cust_id_no
+            AND sub.acct_no = bl_acct_suprs_stat.acct_no
+            AND sub.media_suppress_cd = 'AP'
+            AND sub.med_suprs_stat_cd IN ( 'D', 'E' )
+            AND sub.suprs_stat_eff_ts >= '2020-07-01'
+            AND sub.suprs_stat_end_ts <= '9999-12-31'
+    );
 
 
