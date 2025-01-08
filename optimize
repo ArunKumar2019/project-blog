@@ -232,4 +232,27 @@ WHERE
         AND bl_typ_cd = 'C' )B
 
     
-    
+    .........
+
+
+SELECT 
+    SUM(B.SUM_ROLL_YEAR_DAYS) AS TOTAL_ROLLYR_DAYS, 
+    COUNT(*) AS RECORD_COUNT 
+FROM (
+    SELECT 
+        CASE
+            WHEN stat_reason_cd IN ('SV', 'SE') 
+                 AND TO_DATE(eff_dt, 'YYYY-MM-DD') < TO_DATE('2010-12-14', 'YYYY-MM-DD') THEN
+                TO_DATE('2010-12-14', 'YYYY-MM-DD') - INTERVAL '1' DAY
+            WHEN end_dt = '9999-12-31' THEN
+                TO_DATE('2010-12-14', 'YYYY-MM-DD')
+            ELSE 
+                TO_DATE(end_dt, 'YYYY-MM-DD')
+        END - TO_DATE(eff_dt, 'YYYY-MM-DD') AS SUM_ROLL_YEAR_DAYS
+    FROM
+        bl_acct_customer_mtn
+    WHERE
+        TO_DATE(eff_dt, 'YYYY-MM-DD') > TO_DATE('2010-12-14', 'YYYY-MM-DD')
+        AND TO_DATE(end_dt, 'YYYY-MM-DD') >= TO_DATE(eff_dt, 'YYYY-MM-DD')
+        AND bl_typ_cd = 'C'
+) B;
