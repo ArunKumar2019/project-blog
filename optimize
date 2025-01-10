@@ -342,4 +342,5 @@ WHERE
             AND sub.suprs_stat_end_ts <= '9999-12-31'
     );
 
-
+-----------------------------------
+select 'JoeRiddle'  as 'FIRST-NME','456783920' as 'CUST-ID-NO','1' as 'ACCT-NO','02' as 'MONTHLY-PRICE' ,'2024-1-12' as 'SUB-START-DT' ,'a' as 'PREFER_LANG_CD', '9776653245' as 'MDN','123' as 'BPID' from promo_data where promo_id in ('20194')
