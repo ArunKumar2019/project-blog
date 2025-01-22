@@ -136,3 +136,72 @@ LEFT JOIN PROTECTION_PLAN P
     AND C.MTN_EFF_DT = P.MTN_EFF_DT
 LEFT JOIN OFFERING_INFO O
     ON P.SF_OFFERING_ID = O.SF_OFFERING_ID;
+
+
+
+
+
+
+
+
+
+--------------------------------------------------------------------------------------------------------------
+ WITH customer_device AS (
+    SELECT
+        a.cust_id_no       AS cust_id_no,
+        a.acct_no          AS acct_no,
+        a.mtn              AS mtn,
+        a.mtn_eff_dt       AS mtn_eff_dt,
+        a.actv_req_dt      AS actv_req_dt,
+        b.device_id        AS device_id,
+        b.dvc_trans_rsn_cd AS dvc_trans_rsn_cd
+    FROM
+             customer_dvc_prov_info a
+        JOIN cust_device_eqp_trans b ON a.cust_id_no = b.cust_id_no
+    WHERE
+            a.sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+        AND a.device_id_typ = 'ICC'
+            AND b.device_typ = '4GC'
+                AND b.device_id_typ = 'IME'
+)
+SELECT
+    c.cust_id_no,
+    c.acct_no,
+    c.mtn,
+    c.mtn_eff_dt,
+    c.actv_req_dt,
+    c.device_id,
+    c.dvc_trans_rsn_cd,
+    b.person_given_nme,
+    b.person_family_nme,
+    a.addr_1,
+    a.addr_2,
+    a.addr_city_nme,
+    a.addr_st_cd,
+    a.addr_zip_cd,
+    b.email_addr,
+    ROWNUM AS row_num
+FROM
+    contacts        a,
+    contact_repos   b,
+    customer_device c
+WHERE
+        a.cust_id_no = c.cust_id_no
+    AND a.acct_no = c.acct_no
+        AND a.mtn = c.mtn
+            AND a.mtn_eff_dt = c.mtn_eff_dt
+                AND a.repos_id_no = b.contact_id_no
+
+            
+            
+           
+            
+            
+            
+            
+
+
+
+
+
+
