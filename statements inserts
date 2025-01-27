@@ -1,0 +1,96 @@
+To insert or update dummy data for testing the conditions in your query, you can manually populate the required tables with the appropriate data using INSERT or UPDATE statements. Here's how you can do it:
+
+
+---
+
+1. Identify Tables and Columns
+
+You need to populate or modify the following tables based on your query:
+
+cust_device_eqp_trans
+
+customer_dvc_prov_info
+
+ln_prim_id_mdn
+
+ln_of_svc_pair_stat_5g
+
+
+
+---
+
+2. Example Dummy Data Insertions
+
+Below is an example of inserting dummy data into the relevant tables:
+
+a) Populate cust_device_eqp_trans
+
+INSERT INTO cust_device_eqp_trans (
+    cust_id_no, acct_no, mtn, mtn_eff_dt, dvc_eqp_trans_ts, device_id, device_typ, bill_sys_id, device_id_typ
+) VALUES
+('12345', '98765', '1112223333', TO_DATE('2023-01-01', 'YYYY-MM-DD'), SYSDATE, 'DEVICE123', '4GR', 1, 'IME'),
+('12345', '98765', '1112224444', TO_DATE('2023-01-01', 'YYYY-MM-DD'), SYSDATE, 'DEVICE124', '5GL', 1, 'IME'),
+('12346', '98766', '1112225555', TO_DATE('2023-01-02', 'YYYY-MM-DD'), SYSDATE, 'DEVICE125', '5GF', 1, 'IME');
+
+b) Populate customer_dvc_prov_info
+
+INSERT INTO customer_dvc_prov_info (
+    cust_id_no, acct_no, mtn, mtn_eff_dt, device_id, device_id_typ, sw_disc_tmstamp
+) VALUES
+('12345', '98765', '1112223333', TO_DATE('2023-01-01', 'YYYY-MM-DD'), 'DEVICE123ICC', 'ICC', '9999-12-31-23.59.59.999999'),
+('12345', '98765', '1112224444', TO_DATE('2023-01-01', 'YYYY-MM-DD'), 'DEVICE124ICC', 'ICC', '9999-12-31-23.59.59.999999');
+
+c) Populate ln_prim_id_mdn
+
+INSERT INTO ln_prim_id_mdn (
+    mtn, ln_of_svc_id_no_p1, ln_of_svc_id_no_p2, ln_mdn_end_ts
+) VALUES
+('1112223333', 'P1_123', 'P2_123', '9999-12-31-23.59.59.999999'),
+('1112224444', 'P1_124', 'P2_124', '9999-12-31-23.59.59.999999');
+
+d) Populate ln_of_svc_pair_stat_5g
+
+INSERT INTO ln_of_svc_pair_stat_5g (
+    ln_of_svc_id_no_p1, ln_of_svc_id_no_p2, ln_pair_stat_cd, ln_pair_stat_end_ts, bill_sys_id
+) VALUES
+('P1_123', 'P2_123', 'ACT', '9999-12-31-23.59.59.999999', 1),
+('P1_124', 'P2_124', 'ACT', '9999-12-31-23.59.59.999999', 1);
+
+
+---
+
+3. Updating Data
+
+If the rows already exist but do not meet the conditions, use UPDATE statements to modify them.
+
+Example Update:
+
+UPDATE cust_device_eqp_trans
+SET device_typ = '4GR', bill_sys_id = 1
+WHERE device_id = 'DEVICE123';
+
+UPDATE ln_of_svc_pair_stat_5g
+SET ln_pair_stat_cd = 'ACT', ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+WHERE ln_of_svc_id_no_p1 = 'P1_123';
+
+
+---
+
+4. Verify Data
+
+After inserting or updating, you can check the data:
+
+SELECT * FROM cust_device_eqp_trans;
+SELECT * FROM customer_dvc_prov_info;
+SELECT * FROM ln_prim_id_mdn;
+SELECT * FROM ln_of_svc_pair_stat_5g;
+
+
+---
+
+5. Run Your Query
+
+Now, run your original query and validate if the conditions are met with the dummy data.
+
+Let me know if you need help tailoring these insert or update statements further!
+
