@@ -429,3 +429,124 @@ LEFT JOIN ln_of_svc_pair_stat_5g e
     AND c.ln_of_svc_id_no_p2 = e.ln_of_svc_id_no_p2_bkp
     AND e.ln_pair_stat_cd = 'ACT'
     AND e.ln_pair_stat_end_ts = '
+
+
+
+SELECT
+    a.device_id,
+    a.bill_sys_id,
+    a.mtn AS mtn4g,
+    (
+        CASE
+            WHEN a.device_typ = '4GR' THEN
+                to_char(e.ln_of_svc_id_no_p1_bkp) || '0'
+            ELSE
+                NULL
+        END
+    ) AS lnofsvcidnop1bkp4g,
+    (
+        CASE
+            WHEN a.device_typ = '4GR' THEN
+                to_char(e.ln_of_svc_id_no_p2_bkp)
+            ELSE
+                NULL
+        END
+    ) AS lnofsvcidnop2bkp4g,
+    (
+        CASE
+            WHEN a.device_typ = '4GR' THEN
+                a.device_id
+            ELSE
+                NULL
+        END
+    ) AS deviceidtrans4g,
+    (
+        CASE
+            WHEN a.device_typ = '4GR' THEN
+                b.device_id
+            ELSE
+                NULL
+        END
+    ) AS deviceidinfo4g,
+    a.mtn AS mtn5g,
+    (
+        CASE
+            WHEN a.device_typ IN ('5GL', '5GF') THEN
+                to_char(c.ln_of_svc_id_no_p1) || '0'
+            ELSE
+                NULL
+        END
+    ) AS lnofsvcidnop15g,
+    (
+        CASE
+            WHEN a.device_typ IN ('5GL', '5GF') THEN
+                to_char(c.ln_of_svc_id_no_p2)
+            ELSE
+                NULL
+        END
+    ) AS lnofsvcidnop25g,
+    (
+        CASE
+            WHEN a.device_typ IN ('5GL', '5GF') THEN
+                a.device_id
+            ELSE
+                NULL
+        END
+    ) AS deviceidtrans5g,
+    (
+        CASE
+            WHEN a.device_typ IN ('5GL', '5GF') THEN
+                b.device_id
+            ELSE
+                NULL
+        END
+    ) AS deviceidinfo5g,
+    (
+        CASE
+            WHEN a.device_typ = '4GR' THEN
+                'ICL'
+            WHEN a.device_typ IN ('5GL', '5GF') THEN
+                'FCL'
+        END
+    ) AS devicetype,
+    ROWNUM AS row_num
+FROM
+    (
+        SELECT
+            cust_id_no,
+            acct_no,
+            mtn,
+            mtn_eff_dt,
+            dvc_eqp_trans_ts,
+            device_id,
+            device_typ,
+            bill_sys_id
+        FROM
+            cust_device_eqp_trans
+        WHERE
+            device_id_typ = 'IME'
+            AND bill_sys_id = 1
+            AND device_typ IN ('5GL', '5GF', '4GR')
+    ) a
+    JOIN customer_dvc_prov_info b
+        ON a.cust_id_no = b.cust_id_no
+        AND a.acct_no = b.acct_no
+        AND a.mtn = b.mtn
+        AND a.mtn_eff_dt = b.mtn_eff_dt
+        AND b.device_id_typ = 'ICC'
+        AND b.sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+    JOIN ln_prim_id_mdn c
+        ON a.mtn = c.mtn
+        AND c.ln_mdn_end_ts = '9999-12-31-23.59.59.999999'
+    LEFT JOIN ln_of_svc_pair_stat_5g d
+        ON c.ln_of_svc_id_no_p1 = d.ln_of_svc_id_no_p1
+        AND c.ln_of_svc_id_no_p2 = d.ln_of_svc_id_no_p2
+        AND d.ln_pair_stat_cd = 'ACT'
+        AND d.ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+    LEFT JOIN ln_of_svc_pair_stat_5g e
+        ON c.ln_of_svc_id_no_p1 = e.ln_of_svc_id_no_p1_bkp
+        AND c.ln_of_svc_id_no_p2 = e.ln_of_svc_id_no_p2_bkp
+WHERE
+    e.ln_pair_stat_cd = 'ACT'
+    AND e.ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+    AND e.bill_sys_id = 1;
