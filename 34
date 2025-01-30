@@ -31,3 +31,37 @@ WHERE
     AND ( substr(b.pk1_value, 1, 14) = substr(to_char(a.device_id_eqp), 1, 14)
           OR substr(b.nk1_value, 1, 14) = substr(to_char(a.device_id_eqp), 1, 14) )
 		  
+
+
+
+res
+
+
+SELECT 
+    a.cust_id_no, 
+    a.acct_no, 
+    a.mtn, 
+    a.db_tmstamp, 
+    a.device_id_eqp, 
+    a.bill_sys_id, 
+    b.pk1_value, 
+    b.nk1_value
+FROM ord_ln_item_ord_no a
+JOIN non_reference_xref b 
+    ON (b.pk1_value LIKE SUBSTR(a.device_id_eqp, 1, 14) || '%' 
+        OR b.nk1_value LIKE SUBSTR(a.device_id_eqp, 1, 14) || '%')
+WHERE 
+    a.ln_itm_typ_cd = 'A'
+    AND a.ln_itm_stat_cd = 'LC'
+    AND a.device_id_typ_eqp = 'IME'
+    AND b.source_table = 'DMD_IMEI_PAIR'
+    AND a.bill_sys_id = 1
+    AND a.db_tmstamp >= (
+        SELECT MAX(nk2_value) -- CST_PROC_TMSTAMP  
+        FROM reference_xref -- CST_PARMS  
+        WHERE pk1_value = 'ACST361P' -- CST_PARM_GRP_ID  
+            AND ck2_value = 'LSTRUN' -- CST_PARM_ENT_ID  
+            AND ck3_value = 1 -- CST_PARM_SEQ_NO  
+            AND source_table = 'CST_PARMS'
+    )
+    AND a.db_tmstamp < CURRENT_TIMESTAMP;
