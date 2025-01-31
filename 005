@@ -13,4 +13,49 @@ AND   CMN_PARM_SEQ_NO = 1 fetch first row only )
 
  SELECT MTN, EQ_ORD_NO, NETACE_LOC_ID,    
           EO_ALT_NPA,EO_ALT_NXX,EO_ALT_TLN            
-   FROM EQ_ORD_ALT_INFO 
+   FROM EQ_ORD_ALT_INFO
+
+
+
+
+SELECT 
+    eq.MTN, 
+    eq.EQ_ORD_NO, 
+    eq.NETACE_LOC_ID, 
+    eq.EO_STAT_CD, 
+    eq.DEVICE_CHG_RSN_CD, 
+    eq.EO_STAT_RSN_CD,    
+    eq.EO_STAT_EFF_TMSTMP, 
+    eq.DB_TMSTAMP, 
+    alt.EO_ALT_NPA, 
+    alt.EO_ALT_NXX, 
+    alt.EO_ALT_TLN,
+    CASE 
+        WHEN alt.MTN IS NOT NULL THEN 'Matched'
+        ELSE 'Unmatched from Q1'
+    END AS Record_Status
+FROM (
+    -- Fetching data from Q1
+    SELECT eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID,       
+           eq.EO_STAT_CD, eq.DEVICE_CHG_RSN_CD, eq.EO_STAT_RSN_CD,    
+           eq.EO_STAT_EFF_TMSTMP, eq.DB_TMSTAMP                 
+    FROM EQ_ORDER_STATUS eq  
+    JOIN EQUIP_ORDER eo 
+        ON eq.mtn = eo.mtn 
+        AND eq.EQ_ORD_NO = eo.EQ_ORD_NO 
+        AND eq.NETACE_LOC_ID = eo.NETACE_LOC_ID                          
+    WHERE eq.EO_STAT_CD = 'C'                              
+    AND to_timestamp(eq.DB_TMSTAMP, 'yyyy-mm-dd-hh24.mi.ss.ff6') >= (
+        SELECT to_timestamp(CMN_PARM_VALUE, 'yyyy-mm-dd-hh24.mi.ss.ff6')                          
+        FROM CMN_BATCH_PARMS                 
+        WHERE CMN_PARM_GRP_ID = 'ACST005P'             
+        AND CMN_PARM_ENT_ID = 'UNLD TMS'             
+        AND CMN_PARM_SEQ_NO = 1 
+        FETCH FIRST ROW ONLY
+    )
+) eq  
+LEFT JOIN EQ_ORD_ALT_INFO alt 
+ON eq.MTN = alt.MTN 
+AND eq.EQ_ORD_NO = alt.EQ_ORD_NO 
+AND eq.NETACE_LOC_ID = alt.NETACE_LOC_ID
+ORDER BY eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID; 
