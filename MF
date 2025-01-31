@@ -1,0 +1,181 @@
+
+Step JS030: SPLIT THE FILE FROM JS025
+Input File: ACSTNP.ACST534P.EQTRPVIN.IDMDN	- 3 tables data after joined
+Output File1: ACSTNP.ACST534P.EQTRPVIN.IDMDN5GL 
+Output File2: ACSTNP.ACST534P.EQTRPVIN.IDMDN4GR
+Output File3: ACSTNP.ACST534P.EQTRPVIN.IDMDN5GF
+Controlcard: 
+** Sort: A is Ascending/ D is Descending
+** BI = Binary ; CH = Character
+
+SORT FIELDS=COPY                                   
+OUTFIL FNAMES=SORTOUT1,INCLUDE=(79,3,CH,EQ,C'5GL') 
+OUTFIL FNAMES=SORTOUT2,INCLUDE=(79,3,CH,EQ,C'4GR') 
+OUTFIL FNAMES=SORTOUT3,INCLUDE=(79,3,CH,EQ,C'5GF'),
+       OUTREC=(1:1,50,52,7,C'0',61,18,76X,C'FCL')        
+
+Note: Copy and split the input file into 3 separate output files. Output file 1 contains DEVICE_TYP = “5GL”. Output file 2 contains DEVICE_TYP = “4GR”. Output file 3 contains DEVICE_TYP = “5GF”. Please note 1 file has a separate Output Format below than the other 2 files. Anything within “ “ is hardcoded/static.
+
+Output Format for output 1 and 2 (5GL and 4GR):
+MTN 
+DEVICE_ID (from table CUST_DEVICE_EQP_TRANS)
+DEVICE_ID (from table customer_dvc_prov_info)
+LN_OF_SVC_ID_NO_P1
+LN_OF_SVC_ID_NO_P2
+DEVICE_TYP
+
+Output Format for output 3 (5GF):
+MTN 
+DEVICE_ID (from table CUST_DEVICE_EQP_TRANS)
+DEVICE_ID (from table customer_dvc_prov_info)
+LN_OF_SVC_ID_NO_P1
+“0”
+LN_OF_SVC_ID_NO_P2
+<76 spaces, type out 76 spaces>
+“FCL”
+
+
+
+Step JS035: JOINING THE FILE FROM JS030 WITH FILE FROM UNLOAD OF LN_OF_SVC_PAIR_STAT_5G ON CORELATION ID P1+P2
+Input Join File1: ACSTNP.ACST534P.EQTRPVIN.IDMDN5GL 🡪 From JS030
+Input Join File2: ACSTNP.ACST534P.UNL.PSTAT5G ( SELECT ln_of_svc_id_no_p1,
+ln_of_svc_id_no_p2,
+ln_of_svc_id_no_p1_bkp,
+ln_of_svc_id_no_p2_bkp
+FROM
+    ln_of_svc_pair_stat_5g
+WHERE
+        ln_pair_stat_cd = 'ACT'
+    AND ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+   )	 
+Output File: ACSTNP.ACST534P.EQTRPVIN.IDMDN.PST5GL
+Controlcard: 
+** Sort: A is Ascending/ D is Descending
+** BI = Binary ; CH = Character
+
+JOINKEYS FILES=F1,FIELDS=(51,28,D)
+JOINKEYS FILES=F2,FIELDS=(01,28,D)
+OPTION COPY                       
+REFORMAT FIELDS=(F1:1,78,F2:29,28)
+OUTREC FIELDS=(1:1,106)                 
+
+Note: Match records on LN_OF_SVC_ID_NO_P1 and LN_OF_SVC_ID_NO_P2 descending.  Get matched records. Output in format below. 
+Output Format:
+MTN 
+DEVICE_ID (from table CUST_DVC_EQP_TRANS)
+DEVICE_ID (from table CUST_DVC_PROV_INFO)
+LN_OF_SVC_ID_NO_P1
+LN_OF_SVC_ID_NO_P2         
+🡨 ABOVE COMES FROM F1, BELOW COMES FROM F2 🡪 
+LN_OF_SVC_ID_NO_P1_BKP
+LN_OF_SVC_ID_NO_P2_BKP
+
+
+
+
+
+Step JS045: JOINING THE FILE FROM JS035 WITH FILE FROM UNLOAD OF LN_OF_SVC_PAIR_STAT_5G ON CORELATION ID P1+P2 BKP OF 4GR
+Input Join File1: ACSTNP.ACST534P.EQTRPVIN.IDMDN.PST5GL 🡪 From JS035
+Input Join File2: ACSTNP.ACST534P.EQTRPVIN.IDMDN4GR	🡪 From JS030
+Output File: ACSTNP.ACST534P.EQTRPVIN.IDMDNPST.I5GL4GR
+Controlcard: 
+** Sort: A is Ascending/ D is Descending
+** BI = Binary ; CH = Character
+
+JOINKEYS FILES=F1,FIELDS=(79,28,D)    **BACKUP P2 P1         
+JOINKEYS FILES=F2,FIELDS=(51,28,D)    **4GR P2 P1            
+OPTION COPY                                                  
+REFORMAT FIELDS=(F1:1,106,F2:01,50)                          
+OUTREC FIELDS=(1:1,50,52,7,C'0',61,18,80,7,C'0',89,68,C'ICL')                 
+
+Note: Match records on LN_OF_SVC_ID_NO_P1_BKP and LN_OF_SVC_ID_NO_P2_BKP from F1 against LN_OF_SVC_ID_NO_P1 and LN_OF_SVC_ID_NO_P2 from F2 descending.  Get matched records. Output in format below. Anything within “ “ is a static/hardcoded value.
+Output Format:
+MTN (from 5GL file)
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 5GL file)
+DEVICE_ID (from table CUST_DVC_PROV_INFO 5GL file)
+LN_OF_SVC_ID_NO_P1
+“0”
+LN_OF_SVC_ID_NO_P2         
+LN_OF_SVC_ID_NO_P1_BKP
+“0”
+LN_OF_SVC_ID_NO_P2_BKP
+🡨 ABOVE COMES FROM F1, BELOW COMES FROM F2 🡪 
+MTN (from 4GR file)
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 4GR file)
+DEVICE_ID (from table CUST_DVC_PROV_INFO 4GR file)
+“ICL”
+
+
+
+
+
+Step JS055: APPENDING FILES FROM JS045 AND 5GF FILE OF JS030
+Input File Concatenation:
+ACSTNP.ACST534P.EQTRPVIN.IDMDNPST.I5GL4GR	🡪 From JS045
+ACSTNP.ACST534P.EQTRPVIN.IDMDN5GF			🡪 From JS030
+
+Output File: ACSTNP.ACST534P.OUTPUT.FILE
+Controlcard: 
+** Sort: A is Ascending/ D is Descending
+** BI = Binary ; CH = Character
+
+SORT FIELDS=COPY         
+
+Note: Copy and concatenate 2 input files into output file. No special sorting. Please note input file have separate formats, a general output format is listed below. 
+
+Output Format:
+MTN  (from 5GL file)
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 5GL file)
+DEVICE_ID (from table CUST_DVC_PROV_INFO 5GL file)
+LN_OF_SVC_ID_NO_P1
+“0”
+LN_OF_SVC_ID_NO_P2         
+LN_OF_SVC_ID_NO_P1_BKP
+“0”
+LN_OF_SVC_ID_NO_P2_BKP
+NPA  (from 4GR file)
+NXX  (from 4GR file)
+TLN  (from 4GR file)
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 4GR file)
+DEVICE_ID (from table CUST_DVC_PROV_INFO 4GR file)
+“ICL” or “FCL” depending on the input file (ICL from F1 & FCL from F2)
+
+
+
+
+
+Step JS056: COPY OUTPUT OF JS055 PS TO GDG BY FORMATTING
+Input File: ACSTNP.ACST534P.OUTPUT.FILE		🡪 From JS055
+Output File: ACSTNP.ACST534P.OUTPUT.BKP(+1)
+Controlcard: 
+** Sort: A is Ascending/ D is Descending
+** BI = Binary ; CH = Character
+
+SORT FIELDS=COPY                                                    
+OUTREC FIELDS=(1:1,10,C'|',51,26,C'|',11,20,C'|',31,20,C'|',        
+               103,10,C'|',77,26,C'|',113,20,C'|',133,20,C'|',153,3)
+
+Note: Copy file separating some of the fields with a pipe “|” and new format. Output format below. Anything within “ “ is hardcoded/static.
+
+Output Format:
+MTN  (from 5GL file)
+“|”
+LN_OF_SVC_ID_NO_P1
+“0”
+LN_OF_SVC_ID_NO_P2         
+“|”
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 5GL file)
+“|”
+DEVICE_ID (from table CUST_DVC_PROV_INFO 5GL file)
+“|”
+MTN  (from 4GR file)
+“|”
+LN_OF_SVC_ID_NO_P1_BKP
+“0”
+LN_OF_SVC_ID_NO_P2_BKP
+“|”
+DEVICE_ID (from table CUST_DVC_EQP_TRANS 4GR file)
+“|”
+DEVICE_ID (from table CUST_DVC_PROV_INFO 4GR file)
+“|”
+“ICL” or “FCL” depending on the input file (ICL from F1 or FCL from F2)
