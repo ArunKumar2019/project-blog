@@ -1,0 +1,172 @@
+SQL Query Based on Mainframe Steps
+
+Your mainframe process involves multiple steps, including filtering, joining, and formatting data from multiple tables. The SQL equivalent of these operations can be structured as follows:
+
+1. Filtering & Splitting Data (Equivalent to Step JS030)
+
+Extract records where DEVICE_TYP is either '5GL', '4GR', or '5GF', and store them separately.
+
+Apply static values for '5GF' records (LN_OF_SVC_ID_NO_P2 = '0' and appending 'FCL' at the end).
+
+
+2. Joining with LN_OF_SVC_PAIR_STAT_5G (Equivalent to Step JS035)
+
+Match LN_OF_SVC_ID_NO_P1 and LN_OF_SVC_ID_NO_P2 from ln_of_svc_pair_stat_5g where LN_PAIR_STAT_CD = 'ACT'.
+
+
+3. Joining 5GL with 4GR Data Using Backup IDs (Equivalent to Step JS045)
+
+Match backup IDs (LN_OF_SVC_ID_NO_P1_BKP, LN_OF_SVC_ID_NO_P2_BKP) from 5GL data to 4GR data.
+
+
+4. Concatenation of Files (Equivalent to Step JS055)
+
+Append 5GF data to the processed 5GL-4GR combined data.
+
+
+5. Final Formatting (Equivalent to Step JS056)
+
+Convert the final output into a formatted string with | delimiters.
+
+
+
+---
+
+SQL Query:
+
+WITH FilteredData AS (
+    SELECT DISTINCT 
+        a.mtn, 
+        a.device_id AS cust_dvc_id, 
+        b.device_id AS prov_dvc_id, 
+        c.ln_of_svc_id_no_p1, 
+        c.ln_of_svc_id_no_p2,
+        a.device_typ
+    FROM cust_device_eqp_trans a
+    JOIN customer_dvc_prov_info b 
+        ON a.cust_id_no = b.cust_id_no
+        AND a.acct_no = b.acct_no
+        AND a.mtn = b.mtn
+        AND a.mtn_eff_dt = b.mtn_eff_dt
+        AND b.device_id_typ = 'ICC'
+        AND b.sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+    JOIN ln_prim_id_mdn c 
+        ON a.mtn = c.mtn
+        AND c.ln_mdn_end_ts = '9999-12-31-23.59.59.999999'
+    WHERE a.device_id_typ = 'IME'
+    AND a.device_typ IN ('5GL', '5GF', '4GR')
+),
+JoinedWithPairStat AS (
+    SELECT 
+        f.mtn, 
+        f.cust_dvc_id, 
+        f.prov_dvc_id, 
+        f.ln_of_svc_id_no_p1, 
+        f.ln_of_svc_id_no_p2, 
+        p.ln_of_svc_id_no_p1_bkp, 
+        p.ln_of_svc_id_no_p2_bkp,
+        f.device_typ
+    FROM FilteredData f
+    LEFT JOIN ln_of_svc_pair_stat_5g p 
+        ON f.ln_of_svc_id_no_p1 = p.ln_of_svc_id_no_p1
+        AND f.ln_of_svc_id_no_p2 = p.ln_of_svc_id_no_p2
+    WHERE p.ln_pair_stat_cd = 'ACT'
+    AND p.ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+),
+Joined5GLWith4GR AS (
+    SELECT 
+        g1.mtn AS mtn_5GL, 
+        g1.cust_dvc_id AS dvc_5GL, 
+        g1.prov_dvc_id AS prov_dvc_5GL, 
+        g1.ln_of_svc_id_no_p1, 
+        '0' AS zero_1, 
+        g1.ln_of_svc_id_no_p2, 
+        g1.ln_of_svc_id_no_p1_bkp, 
+        '0' AS zero_2, 
+        g1.ln_of_svc_id_no_p2_bkp, 
+        g2.mtn AS mtn_4GR, 
+        g2.cust_dvc_id AS dvc_4GR, 
+        g2.prov_dvc_id AS prov_dvc_4GR, 
+        'ICL' AS static_value
+    FROM JoinedWithPairStat g1
+    JOIN FilteredData g2 
+        ON g1.ln_of_svc_id_no_p1_bkp = g2.ln_of_svc_id_no_p1 
+        AND g1.ln_of_svc_id_no_p2_bkp = g2.ln_of_svc_id_no_p2
+    WHERE g2.device_typ = '4GR'
+),
+FinalOutput AS (
+    SELECT 
+        mtn_5GL, dvc_5GL, prov_dvc_5GL, ln_of_svc_id_no_p1, zero_1, ln_of_svc_id_no_p2, 
+        ln_of_svc_id_no_p1_bkp, zero_2, ln_of_svc_id_no_p2_bkp, mtn_4GR, dvc_4GR, prov_dvc_4GR, static_value
+    FROM Joined5GLWith4GR
+    UNION ALL
+    SELECT 
+        mtn, cust_dvc_id, prov_dvc_id, ln_of_svc_id_no_p1, '0', ln_of_svc_id_no_p2, 
+        NULL, NULL, NULL, NULL, NULL, NULL, 'FCL'
+    FROM FilteredData
+    WHERE device_typ = '5GF'
+)
+SELECT 
+    mtn_5GL || '|' || ln_of_svc_id_no_p1 || '0' || ln_of_svc_id_no_p2 || '|' ||
+    dvc_5GL || '|' || prov_dvc_5GL || '|' ||
+    mtn_4GR || '|' || ln_of_svc_id_no_p1_bkp || '0' || ln_of_svc_id_no_p2_bkp || '|' ||
+    dvc_4GR || '|' || prov_dvc_4GR || '|' || static_value AS formatted_output
+FROM FinalOutput
+ORDER BY mtn_5GL DESC;
+
+
+---
+
+Explanation of Query Steps:
+
+1. FilteredData CTE:
+
+Retrieves distinct data from cust_device_eqp_trans, customer_dvc_prov_info, and ln_prim_id_mdn.
+
+Filters device_typ ('5GL', '5GF', '4GR').
+
+
+
+2. JoinedWithPairStat CTE:
+
+Joins the filtered data with ln_of_svc_pair_stat_5g on ln_of_svc_id_no_p1 and ln_of_svc_id_no_p2.
+
+
+
+3. Joined5GLWith4GR CTE:
+
+Matches 5GL data with 4GR data using ln_of_svc_id_no_p1_bkp and ln_of_svc_id_no_p2_bkp.
+
+
+
+4. FinalOutput CTE:
+
+Combines the joined 5GL-4GR data with 5GF data.
+
+Adds static values: "0" and "FCL" for 5GF, "ICL" for 5GL-4GR.
+
+
+
+5. Final SELECT Statement:
+
+Formats the output using || (concatenation) to match the pipe-separated format.
+
+
+
+
+
+---
+
+Final Output Format (Matches Mainframe Step JS056)
+
+
+---
+
+Key Benefits of This Approach
+
+✔ Matches Mainframe Steps – Including filtering, joining, appending, and formatting.
+✔ Efficient SQL Execution – Uses CTEs to structure the logic step by step.
+✔ Scalable & Readable – Can handle large datasets efficiently.
+
+Let me know if you need any refinements!
+
