@@ -65,3 +65,81 @@ WHERE
             AND source_table = 'CST_PARMS'
     )
     AND a.db_tmstamp < CURRENT_TIMESTAMP;
+--------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+SELECT
+    cust_id_no,
+    acct_no,
+    mtn,
+    mtn_eff_dt,
+    dvc_eqp_trans_ts,
+    device_id,
+    device_typ
+FROM
+    cust_device_eqp_trans
+WHERE
+        device_id_typ = 'IME'
+    AND device_typ IN ( '5GL', '5GF', '4GR' )
+--2    
+SELECT
+    cust_id_no,
+    acct_no,
+    mtn,
+    mtn_eff_dt,
+    cust_dvc_crt_ts,
+    device_id
+FROM
+    customer_dvc_prov_info
+WHERE
+        device_id_typ = 'ICC'
+    AND sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+-- 3 
+SELECT
+    ln_of_svc_id_no_p1,
+    ln_of_svc_id_no_p2,
+    mtn
+FROM
+    ln_prim_id_mdn
+WHERE
+    ln_mdn_end_ts = '9999-12-31-23.59.59.999999'
+-- 4 
+     SELECT ln_of_svc_id_no_p1,
+ln_of_svc_id_no_p2,
+ln_of_svc_id_no_p1_bkp,
+ln_of_svc_id_no_p2_bkp
+FROM
+    ln_of_svc_pair_stat_5g
+WHERE
+        ln_pair_stat_cd = 'ACT'
+    AND ln_pair_stat_end_ts = '9999-12-31-23.59.59.999999'
+    
+    
+    
+SELECT Distinct a.cust_id_no,a.acct_no,a.mtn,a.mtn_eff_dt,a.dvc_eqp_trans_ts,a.device_id,a.device_typ,b.device_id as prov_dvc_id
+FROM
+    cust_device_eqp_trans a  JOIN customer_dvc_prov_info b ON a.cust_id_no = b.cust_id_no
+                                     AND a.acct_no = b.acct_no
+                                     AND a.mtn = b.mtn
+                                     AND a.mtn_eff_dt = b.mtn_eff_dt
+                                     AND b.device_id_typ = 'ICC'
+                                     AND b.sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+WHERE
+        a.device_id_typ = 'IME'
+    AND a.device_typ IN ( '5GL', '5GF', '4GR' ) and  b.device_id_typ = 'ICC'
+    AND b.sw_disc_tmstamp = '9999-12-31-23.59.59.999999' order by a.cust_id_no
+   
+   
+    SELECT
+    cust_id_no,
+    acct_no,
+    mtn,
+    mtn_eff_dt,
+    cust_dvc_crt_ts,
+    device_id
+FROM
+    customer_dvc_prov_info
+WHERE
+        device_id_typ = 'ICC'
+    AND sw_disc_tmstamp = '9999-12-31-23.59.59.999999'
+    
