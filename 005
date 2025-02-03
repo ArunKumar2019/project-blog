@@ -59,3 +59,41 @@ ON eq.MTN = alt.MTN
 AND eq.EQ_ORD_NO = alt.EQ_ORD_NO 
 AND eq.NETACE_LOC_ID = alt.NETACE_LOC_ID
 ORDER BY eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID; 
+----------------------------------------------------------------------------------------------------------
+
+SELECT 
+   rpad(eq.mtn, 12, ' ')   as mtn,
+   lpad(eq.EQ_ORD_NO, 9, ' ') as eqordno,
+   rpad(eq.netace_loc_id, 7, ' ')      AS netacelocid,
+   rpad(eq.netace_cluster_cd, 3, ' ')  AS netaceclustercd,
+   rpad(eq.cust_id_no, 19, ' ')        AS custidno,
+   lpad(eq.acct_no, 1, ' ')            AS acctno,
+   lpad(eq.eq_deplete_loc_typ, 1, ' ') AS eqdepleteloctyp,
+   lpad(eq.eo_stat_cd, 1, ' ')         AS eostatcd,
+   lpad(eq.DEVICE_CHG_RSN_CD, 2, ' ')     AS esnchgrsncd,
+   lpad(eq.eo_stat_rsn_cd, 2, ' ')     AS eostatrsncd,   
+   lpad(eq.db_tmstamp, 26, ' ')        AS dbtmstamp,
+    alt.MTN as eoaltmtn
+FROM (
+     SELECT eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID,       
+           eq.EO_STAT_CD, eq.DEVICE_CHG_RSN_CD, eq.EO_STAT_RSN_CD,    
+           eq.EO_STAT_EFF_TMSTMP, eq.DB_TMSTAMP  ,eo.EQ_DEPLETE_LOC_TYP ,eo.CUST_ID_NO,eo.acct_no,eo.NETACE_CLUSTER_CD              
+    FROM EQ_ORDER_STATUS eq  
+    JOIN EQUIP_ORDER eo 
+        ON eq.mtn = eo.mtn 
+        AND eq.EQ_ORD_NO = eo.EQ_ORD_NO 
+        AND eq.NETACE_LOC_ID = eo.NETACE_LOC_ID                          
+    WHERE eq.EO_STAT_CD = 'C'                              
+    AND to_timestamp(eq.DB_TMSTAMP, 'yyyy-mm-dd-hh24.mi.ss.ff6') >= (
+        SELECT to_timestamp(CMN_PARM_VALUE, 'yyyy-mm-dd-hh24.mi.ss.ff6')                          
+        FROM CMN_BATCH_PARMS                 
+        WHERE CMN_PARM_GRP_ID = 'ACST005P'             
+        AND CMN_PARM_ENT_ID = 'UNLD TMS'             
+        AND CMN_PARM_SEQ_NO = 1 FETCH FIRST ROW ONLY
+    )order by eq.EO_STAT_EFF_TMSTMP desc
+) eq  
+LEFT JOIN EQUIP_ORDER alt 
+ON eq.MTN = alt.MTN 
+AND eq.EQ_ORD_NO = alt.EQ_ORD_NO 
+AND eq.NETACE_LOC_ID = alt.NETACE_LOC_ID
+ORDER BY eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID;
