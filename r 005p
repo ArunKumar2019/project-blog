@@ -1,0 +1,67 @@
+SELECT
+    *
+FROM
+    (
+        WITH last_run_time AS (
+            SELECT
+                to_timestamp(nk3_value, 'yyyy-mm-dd-hh24.mi.ss.ff6') AS last_run
+            FROM
+                reference_xref
+            WHERE
+                    pk1_value = 'ACST005P'
+                AND ck2_value = 'UNLD TMS'
+                    AND source_table = 'CMN_BATCH_PARMS'
+                        AND ck3_value = 1
+            FETCH FIRST ROW ONLY
+        )
+        SELECT
+            rpad(eq.mtn, 12, ' ')               AS mtn,
+            lpad(eq.eq_ord_no, 9, ' ')          AS eqordno,
+            rpad(eq.netace_loc_id, 7, ' ')      AS netacelocid,
+            rpad(eq.netace_cluster_cd, 3, ' ')  AS netaceclustercd,
+            rpad(eq.cust_id_no, 19, ' ')        AS custidno,
+            lpad(eq.acct_no, 1, ' ')            AS acctno,
+            lpad(eq.eq_deplete_loc_typ, 1, ' ') AS eqdepleteloctyp,
+            lpad(eq.eo_stat_cd, 2, ' ')         AS eostatcd,
+            lpad(eq.ESN_CHG_RSN_CD, 2, ' ')  AS esnchgrsncd,
+            lpad(eq.eo_stat_rsn_cd, 2, ' ')     AS eostatrsncd,
+            lpad(eq.db_tmstamp, 26, ' ')        AS dbtmstamp,
+            alt.mtn                             AS eoaltmtn
+        FROM
+            (
+                SELECT
+                    eq.mtn,
+                    eq.eq_ord_no,
+                    eq.netace_loc_id,
+                    eq.eo_stat_cd,
+                    eq.ESN_CHG_RSN_CD,
+                    eq.eo_stat_rsn_cd,
+                    eq.eo_stat_eff_tmstmp,
+                    eq.db_tmstamp,
+                    eo.eq_deplete_loc_typ,
+                    eo.cust_id_no,
+                    eo.acct_no,
+                    eo.netace_cluster_cd
+                FROM
+                         equip_order eq
+                    JOIN equip_order eo ON eq.mtn = eo.mtn
+                                           AND eq.eq_ord_no = eo.eq_ord_no
+                                               AND eq.netace_loc_id = eo.netace_loc_id
+                WHERE
+                        eq.eo_stat_cd = 'C'
+                    AND to_timestamp(eq.db_tmstamp, 'yyyy-mm-dd-hh24.mi.ss.ff6') >= (
+                        SELECT
+                            last_run
+                        FROM
+                            last_run_time
+                    )
+            )           eq
+            LEFT JOIN equip_order alt ON eq.mtn = alt.mtn
+                                         AND eq.eq_ord_no = alt.eq_ord_no
+                                             AND eq.netace_loc_id = alt.netace_loc_id
+        ORDER BY
+            eq.mtn,
+            eq.eq_ord_no,
+            eq.netace_loc_id
+    )
+ 
