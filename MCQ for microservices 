@@ -1,0 +1,106 @@
+Here are some multiple-choice questions (MCQs) with answers on Event-Driven Architecture (EDA) in Microservices:
+
+Basic Concepts of Event-Driven Architecture
+
+1. What is an event in an event-driven architecture?
+a) A function call between microservices
+b) A state change in the system
+c) A request-response interaction
+d) A REST API call
+
+Answer: b) A state change in the system
+
+
+2. Which of the following best describes event-driven architecture?
+a) A system where components communicate by sharing a database
+b) A system where components communicate via direct API calls
+c) A system where components produce and consume events asynchronously
+d) A system that only works with monolithic applications
+
+Answer: c) A system where components produce and consume events asynchronously
+
+
+3. Which messaging patterns are commonly used in event-driven microservices?
+a) Request-response
+b) Publish-subscribe
+c) Point-to-point
+d) Both b and c
+
+Answer: d) Both b and c
+
+
+
+Event Brokers and Messaging Systems
+
+4. Which of the following tools can be used as an event broker in microservices?
+a) Apache Kafka
+b) RabbitMQ
+c) AWS SNS/SQS
+d) All of the above
+
+Answer: d) All of the above
+
+
+5. In event-driven microservices, what is the role of a message broker?
+a) To store data persistently
+b) To facilitate communication between services by routing events
+c) To replace databases in microservices
+d) To execute business logic
+
+Answer: b) To facilitate communication between services by routing events
+
+
+
+Event Types and Processing
+
+6. Which of the following best describes a "domain event"?
+a) A user-generated HTTP request
+b) A significant state change in a business domain
+c) A scheduled cron job execution
+d) A response from an API
+
+Answer: b) A significant state change in a business domain
+
+
+7. Which event pattern ensures that the event publisher does not need to know about the event subscribers?
+a) Request-response
+b) Synchronous API calls
+c) Event sourcing
+d) Publish-subscribe
+
+Answer: d) Publish-subscribe
+
+
+8. What is event sourcing in event-driven architecture?
+a) A way to fetch data from multiple sources
+b) A pattern where state changes are stored as a sequence of events
+c) A method to optimize database queries
+d) A way to call REST APIs asynchronously
+
+Answer: b) A pattern where state changes are stored as a sequence of events
+
+
+
+Benefits and Challenges of EDA
+
+9. What is a key benefit of using an event-driven architecture in microservices?
+a) Reduced latency in API calls
+b) Improved scalability and decoupling of services
+c) Simplified debugging and logging
+d) Strong dependency between services
+
+Answer: b) Improved scalability and decoupling of services
+
+
+10. What is one major challenge of implementing event-driven architecture?
+a) Increased performance overhead due to direct API calls
+b) Tight coupling between microservices
+c) Eventual consistency and debugging complexity
+d) Reduced system reliability
+
+Answer: c) Eventual consistency and debugging complexity
+
+
+
+Would you like more questions on advanced topics like Kafka, event replay, or distributed transactions?
+
