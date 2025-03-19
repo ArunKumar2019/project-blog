@@ -86,3 +86,144 @@ public BatchGenericModel process(BatchGenericModel item, String jobName,
 		cmp.setCompositeMap(compositeMap);
 		return cmp;
 	}
+
+
+_________________________________________________________
+
+To create an additional merged file that contains all processed data, you can follow this approach:
+
+Steps to Modify Your Code
+
+1. Continue adding individual files for each validVisionInstance, as you already do.
+
+
+2. Create a new mergedFileKeyValue object to hold all records.
+
+
+3. After processing all items, add the merged data to this file.
+
+
+
+
+---
+
+Modified Code Snippet
+
+List<BatchGenericModel> keyValues = new ArrayList<>();
+List<Acst787pModel> mergedData = new ArrayList<>(); // To store merged data
+
+if (item instanceof CompositeReaderModel) {
+    List<BatchGenericModel> items = ((CompositeReaderModel) item).getItems();
+    for (BatchGenericModel model : items) {
+        if (model instanceof Acst787pModel) {
+            log.info("Processing model: {} ", model);
+            Acst787pModel acst787pModel = (Acst787pModel) model;
+
+            if (acst787pModel != null) {
+                acst787pModel = processAcst787p(acst787pModel, jobName, namedJdbcTemplate);
+                if (acst787pModel == null) {
+                    return null;
+                }
+                
+                // Store data in merged list
+                mergedData.add(acst787pModel);
+                
+                String fileName;
+                switch (acst787pModel.getValidVisionInstance()) {
+                    case "E" -> fileName = jobConfig.getJobOutput().stream()
+                            .filter(x -> x.getSeqNo() == 1)
+                            .map(JobOutput::getFileName)
+                            .findFirst()
+                            .orElse("default_east.txt");
+                    case "W" -> fileName = jobConfig.getJobOutput().stream()
+                            .filter(x -> x.getSeqNo() == 2)
+                            .map(JobOutput::getFileName)
+                            .findFirst()
+                            .orElse("default_west.txt");
+                    case "N" -> fileName = jobConfig.getJobOutput().stream()
+                            .filter(x -> x.getSeqNo() == 3)
+                            .map(JobOutput::getFileName)
+                            .findFirst()
+                            .orElse("default_north.txt");
+                    case "VB2B" -> fileName = jobConfig.getJobOutput().stream()
+                            .filter(x -> x.getSeqNo() == 4)
+                            .map(JobOutput::getFileName)
+                            .findFirst()
+                            .orElse("default_vb2b.txt");
+                    default -> fileName = jobConfig.getJobOutput().stream()
+                            .filter(x -> x.getSeqNo() == 5)
+                            .map(JobOutput::getFileName)
+                            .findFirst()
+                            .orElse("default_solo.txt");
+                }
+
+                KeyValue keyValue = new KeyValue();
+                keyValue.setKey(fileName);
+                keyValue.setValue(acst787pModel);
+                keyValues.add(keyValue);
+            }
+        }
+    }
+}
+
+// Add merged data to a new file
+String mergedFileName = jobConfig.getJobOutput().stream()
+        .filter(x -> x.getSeqNo() == 6)  // Assuming 6 is the sequence number for merged file
+        .map(JobOutput::getFileName)
+        .findFirst()
+        .orElse("default_merged.txt");
+
+KeyValue mergedFileKeyValue = new KeyValue();
+mergedFileKeyValue.setKey(mergedFileName);
+mergedFileKeyValue.setValue(mergedData);  // Add full merged data
+keyValues.add(mergedFileKeyValue);
+
+// Create composite output
+CompositeFileWriterModel compositeFileWriterModel = new CompositeFileWriterModel();
+compositeFileWriterModel.setItems(keyValues);
+
+Map<String, Object> compositeMap = new HashMap<>();
+compositeMap.put("file", compositeFileWriterModel);
+
+CompositeDataModel cmp = new CompositeDataModel();
+cmp.setCompositeMap(compositeMap);
+
+log.debug("Acst787p job is ended...");
+return cmp;
+
+
+---
+
+Explanation of the Changes
+
+✔ Each item is still assigned to its respective file based on validVisionInstance.
+✔ New list mergedData collects all acst787pModel objects.
+✔ After processing, a new KeyValue object (mergedFileKeyValue) stores all records in a merged file.
+✔ mergedFileName is retrieved dynamically based on a new sequence (seqNo == 6).
+✔ The merged file is added to the final output (compositeMap).
+
+This approach ensures that:
+
+You still get individual files per validVisionInstance.
+
+A new merged file contains all processed records in a single place.
+
+
+
+---
+
+Next Steps
+
+1. If seqNo == 6 is not already defined for the merged file in jobConfig.getJobOutput(), add it.
+
+
+2. If the merged file format differs from individual files, adjust the KeyValue object accordingly.
+
+
+3. Test the batch process with different datasets to ensure all cases are handled correctly.
+
+
+
+Would you like any refinements, such as handling duplicates or specific formatting in the merged file?
+
+
