@@ -1,0 +1,88 @@
+public BatchGenericModel process(BatchGenericModel item, String jobName,
+			NamedParameterJdbcTemplate namedJdbcTemplate, JobConfigModel jobConfig) throws CstBatchException {
+
+		BL_ACCT_BL_TYP_SQL = "SELECT BL_TYP_STAT_CD, BL_TYP_EFF_DT, BILL_SYS_ID FROM " + jobConfig.getSchemaName()
+				+ "BL_ACCT WHERE CUST_ID_NO = :custIdNo AND ACCT_NO = :acctNo AND\n"
+				+ "BL_TYP_CD = 'C' AND CURR_PRI_IND = 'C'";
+
+		BL_ACCT_STAT_CD_SQL = "SELECT BL_ACCT_STAT_CD FROM " + jobConfig.getSchemaName()
+				+ "BL_ACCT WHERE CUST_ID_NO = :custIdNo AND ACCT_NO = :acctNo";
+
+		BL_ACCT_SQL = "SELECT count (*) FROM " + jobConfig.getSchemaName()
+				+ "BL_ACCT WHERE CUST_ID_NO = :custIdNo AND ACCT_NO = :acctNo " + "AND SVC_OFFR_CD = 'POSPB'";
+
+		log.debug("Acst787p job is started...");
+
+		Acst787pModel acst787pModel = null;
+		KeyValue keyValue = new KeyValue();
+		KeyValue keyValue1 = new KeyValue();
+		KeyValue keyValue2 = new KeyValue();
+		KeyValue keyValue3 = new KeyValue();
+		KeyValue keyValue4 = new KeyValue();
+		Map<String, Object> compositeMap = new HashMap<>();
+		CompositeDataModel cmp = new CompositeDataModel();
+		CompositeFileWriterModel compositeFileWriterModel = new CompositeFileWriterModel();
+		List<BatchGenericModel> keyValues = new ArrayList<>();
+		if (item instanceof CompositeReaderModel) {
+
+			List<BatchGenericModel> items = ((CompositeReaderModel) item).getItems();
+			for (BatchGenericModel model : items) {
+				if (model instanceof Acst787pModel) {
+					log.info("model1: {} ", model);
+					acst787pModel = (Acst787pModel) model;
+
+					if (acst787pModel != null) {
+						acst787pModel = processAcst787p(acst787pModel, jobName, namedJdbcTemplate);
+						if (acst787pModel == null) {
+							return null;
+						}
+						if(acst787pModel!=null && acst787pModel.getValidVisionInstance().equals("E")) {
+							String eastFileName = jobConfig.getJobOutput().stream()
+									.filter(x -> x.getSeqNo() == 0 || x.getSeqNo() == 1).findFirst().orElse(null)
+									.getFileName();
+							keyValue.setKey(eastFileName);
+							keyValue.setValue(acst787pModel);
+							keyValues.add(keyValue);
+
+						} else if (acst787pModel!=null && acst787pModel.getValidVisionInstance().equals("W")) {
+							String westFileName = jobConfig.getJobOutput().stream()
+									.filter(x -> x.getSeqNo() == 0 || x.getSeqNo() == 2).findFirst().orElse(null)
+									.getFileName();
+							keyValue1.setKey(westFileName);
+							keyValue1.setValue(acst787pModel);
+							keyValues.add(keyValue1);
+
+						} else if (acst787pModel!=null && acst787pModel.getValidVisionInstance().equals("N")) {
+							String northFileName = jobConfig.getJobOutput().stream()
+									.filter(x -> x.getSeqNo() == 0 || x.getSeqNo() == 3).findFirst().orElse(null)
+									.getFileName();
+							keyValue2.setKey(northFileName);
+							keyValue2.setValue(acst787pModel);
+							keyValues.add(keyValue2);
+						} else if (acst787pModel!=null && acst787pModel.getValidVisionInstance().equals("VB2B")) {
+							String vb2bFileName = jobConfig.getJobOutput().stream()
+									.filter(x -> x.getSeqNo() == 0 || x.getSeqNo() == 4).findFirst().orElse(null)
+									.getFileName();
+							keyValue3.setKey(vb2bFileName);
+							keyValue3.setValue(acst787pModel);
+							keyValues.add(keyValue3);
+						} else {
+							String soloFileName = jobConfig.getJobOutput().stream()
+									.filter(x -> x.getSeqNo() == 0 || x.getSeqNo() == 5).findFirst().orElse(null)
+									.getFileName();
+							keyValue4.setKey(soloFileName);
+							keyValue4.setValue(acst787pModel);
+							keyValues.add(keyValue4);
+						}
+					}
+					compositeFileWriterModel.setItems(keyValues);
+					compositeMap.put("file", compositeFileWriterModel);
+				}
+			}
+		}
+
+		log.debug("Acst787p job is ended...");
+
+		cmp.setCompositeMap(compositeMap);
+		return cmp;
+	}
