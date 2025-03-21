@@ -1,0 +1,20 @@
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import org.springframework.jdbc.core.RowMapper;
+
+public class AcstlsnrpModelRowMapper implements RowMapper<BatchGenericModel> {
+
+    private final RowMapper<CstBatchJobConfigModel> jobConfigRowMapper;
+
+    public AcstlsnrpModelRowMapper(RowMapper<CstBatchJobConfigModel> jobConfigRowMapper) {
+        this.jobConfigRowMapper = jobConfigRowMapper;
+    }
+
+    @Override
+    public BatchGenericModel mapRow(ResultSet rs, int rowNum) throws SQLException {
+        return AcstlsnrpModel.builder()
+            .targetJobName(rs.getString(ApplicationConstants.DB_JOB_NAME))
+            .jobConfig(jobConfigRowMapper.mapRow(rs, rowNum)) // Delegating parsing to existing JobConfigModel mapper
+            .build();
+    }
+}
