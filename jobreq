@@ -1,0 +1,41 @@
+private void processRmqFileJobRequest(StepExecution stepExecution) {
+		RmqOutRequest rmqOutRequest = (RmqOutRequest) stepExecution.getExecutionContext()
+				.get(ApplicationConstants.RMQ_OUT_REQUEST);
+		List<RmqOutRequest> rmqFileRequestList = (List<RmqOutRequest>) stepExecution.getExecutionContext()
+				.get(ApplicationConstants.RMQ_LISTEN_REQUEST);
+		
+	for(RmqOutRequest rmqFileRequest :rmqFileRequestList) {
+		if (!ObjectUtils.isEmpty(rmqFileRequest)) {
+			try {
+			CstBatchUtil cstBatchUtil = new CstBatchUtil();
+			String requestFileJobStr = cstBatchUtil.convertJsontoString(rmqFileRequest, mapper);
+			logger.info("RMQ Request for File Input {}", requestFileJobStr);
+			if (receiveEnabled && StringUtils.isNoneBlank(postExcahnge, postRoutingKey)) {
+				amqpTemplate.convertAndSend(postExcahnge, postRoutingKey, requestFileJobStr);
+			}
+			// Remove the job from the static map
+			removeJobFromMap(null, stepExecution, rmqFileRequest);
+			// KIBANA
+			Map<String, Object> requestPayloadMap = mapper.readValue(requestFileJobStr,
+					new TypeReference<Map<String, Object>>() {
+					});
+			Map<String, String> additionalInputs = new HashMap<>();
+			additionalInputs.put(ApplicationConstants.RMQ_ENABLED, String.valueOf(rmqEnabled));
+			additionalInputs.put(ApplicationConstants.EVENT_TYPE, ApplicationConstants.CFI_EMAIL_OP);
+			additionalInputs.put(ApplicationConstants.STATUS, ApplicationConstants.SUCCESS);
+			additionalInputs.put(ApplicationConstants.STATUS_CODE, ApplicationConstants.STATUS_CODE_SUCCESS);
+			additionalInputs.put(ApplicationConstants.STATUS_MSG, ApplicationConstants.STATUS_MESSAGE_SUCCESS);
+			cstBatchUtil.formulateKibanaInput(requestPayloadMap, additionalInputs);
+			// Tracking Table Insert
+			if (!disableTrackingTable) {
+				additionalInputs.put(ApplicationConstants.RMQ_STATUS, ApplicationConstants.OPEN_STATUS);
+				// cstBatchUtil.saveToTrackingTableRMQ(rmqRequest, additionalInputs,
+				// namedJdbcTemplate, null,requestStr);
+			}
+		} catch (JsonProcessingException e) {
+			logger.error("JsonProcessingException in CstStepComplNotificationListener processRmqOutRequest {}",
+					e.getMessage());
+		}
+	}
+}
+	}
