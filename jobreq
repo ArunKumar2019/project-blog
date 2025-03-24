@@ -39,3 +39,72 @@ private void processRmqFileJobRequest(StepExecution stepExecution) {
 	}
 }
 	}
+
+
+
+_-_+_---+-+-++++++-+-+(-+-+-+-
+
+private void processRmqFileJobRequest(StepExecution stepExecution) {
+    ExecutionContext executionContext = stepExecution.getExecutionContext();
+
+    RmqOutRequest rmqOutRequest = (RmqOutRequest) executionContext.get(ApplicationConstants.RMQ_OUT_REQUEST);
+    List<RmqOutRequest> rmqFileRequestList = (List<RmqOutRequest>) executionContext.get(ApplicationConstants.RMQ_LISTEN_REQUEST);
+
+    CstBatchUtil cstBatchUtil = new CstBatchUtil(); // Move object creation outside the loop
+
+    // If rmqFileRequestList is available, process in a loop
+    if (rmqFileRequestList != null && !rmqFileRequestList.isEmpty()) {
+        for (RmqOutRequest rmqFileRequest : rmqFileRequestList) {
+            processRmqRequest(rmqFileRequest, stepExecution, cstBatchUtil);
+        }
+    }
+    // If rmqOutRequest is available, process it once
+    else if (rmqOutRequest != null) {
+        processRmqRequest(rmqOutRequest, stepExecution, cstBatchUtil);
+    } else {
+        logger.warn("No RMQ requests found in execution context.");
+    }
+}
+
+/**
+ * Helper method to process a single RMQ request
+ */
+private void processRmqRequest(RmqOutRequest rmqRequest, StepExecution stepExecution, CstBatchUtil cstBatchUtil) {
+    if (ObjectUtils.isEmpty(rmqRequest)) {
+        logger.warn("Skipping empty RMQ request.");
+        return;
+    }
+
+    try {
+        String requestFileJobStr = cstBatchUtil.convertJsontoString(rmqRequest, mapper);
+        logger.info("RMQ Request for File Input: {}", requestFileJobStr);
+
+        if (receiveEnabled && StringUtils.isNoneBlank(postExcahnge, postRoutingKey)) {
+            amqpTemplate.convertAndSend(postExcahnge, postRoutingKey, requestFileJobStr);
+        }
+
+        // Remove the job from the static map
+        removeJobFromMap(null, stepExecution, rmqRequest);
+
+        // KIBANA Logging
+        Map<String, Object> requestPayloadMap = mapper.readValue(requestFileJobStr, new TypeReference<>() {});
+        Map<String, String> additionalInputs = new HashMap<>();
+        additionalInputs.put(ApplicationConstants.RMQ_ENABLED, String.valueOf(rmqEnabled));
+        additionalInputs.put(ApplicationConstants.EVENT_TYPE, ApplicationConstants.CFI_EMAIL_OP);
+        additionalInputs.put(ApplicationConstants.STATUS, ApplicationConstants.SUCCESS);
+        additionalInputs.put(ApplicationConstants.STATUS_CODE, ApplicationConstants.STATUS_CODE_SUCCESS);
+        additionalInputs.put(ApplicationConstants.STATUS_MSG, ApplicationConstants.STATUS_MESSAGE_SUCCESS);
+
+        cstBatchUtil.formulateKibanaInput(requestPayloadMap, additionalInputs);
+
+        // Tracking Table Insert
+        if (!disableTrackingTable) {
+            additionalInputs.put(ApplicationConstants.RMQ_STATUS, ApplicationConstants.OPEN_STATUS);
+            // cstBatchUtil.saveToTrackingTableRMQ(rmqRequest, additionalInputs, namedJdbcTemplate, null, requestFileJobStr);
+        }
+    } catch (JsonProcessingException e) {
+        logger.error("JsonProcessingException in processRmqRequest: {}", e.getMessage(), e);
+    } catch (Exception e) {
+        logger.error("Exception in processRmqRequest: {}", e.getMessage(), e);
+    }
+}
