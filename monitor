@@ -1,0 +1,42 @@
+private void saveAndUpdateCstMonitor(AcstlsnrpModel acstlsnrpModel,
+                                     Map<String, String> additionalInputMap,
+                                     NamedParameterJdbcTemplate namedParameterJdbcTemplate) {
+
+    // Get the current timestamp
+    Timestamp timestamp = new Timestamp(System.currentTimeMillis());
+
+    // Create the model object
+    CstMonitorModel cstMonitorModel = CstMonitorModel.builder()
+            .jobName(acstlsnrpModel.getDestJobName())
+            .fileStatus(additionalInputMap.get("fileStatus"))
+            .request(additionalInputMap.get("rmqOutRequest"))
+            .creationDate(CstBatchUtil.getCurrentDate(ApplicationConstants.DATE_FORMAT, additionalInputMap.get("creationDt")))
+            .creationTimestamp(timestamp)
+            .createdBy("OR-ACSTLSNRP")
+            .fileName(acstlsnrpModel.getInputPath())
+            .build();
+
+    // 1️⃣ UPDATE existing records if jobName exists
+    String updateSql = "UPDATE CTX_CST_MONITOR_INBOUND " +
+                       "SET updatedBy = :updatedBy, " +
+                       "    modifyTimestamp = :modifyTimestamp, " +
+                       "    fileStatus = :fileStatus, " +
+                       "    request = :request " +
+                       "WHERE JobName = :jobName";
+
+    // Execute update
+    int updateCount = namedParameterJdbcTemplate.update(updateSql, new BeanPropertySqlParameterSource(cstMonitorModel));
+
+    // 2️⃣ INSERT if no rows were updated
+    if (updateCount == 0) {
+        String insertSql = "INSERT INTO CTX_CST_MONITOR_INBOUND " +
+                           "(JobName, fileStatus, request, creation_date, creation_timestamp, createdBy, fileName) " +
+                           "VALUES (:jobName, :fileStatus, :request, :creationDate, :creationTimestamp, :createdBy, :fileName)";
+
+        // Execute insert
+        namedParameterJdbcTemplate.update(insertSql, new BeanPropertySqlParameterSource(cstMonitorModel));
+    }
+
+    // Log the result
+    log.debug("Updated {} record(s) in CST_MONITOR Table", updateCount);
+}
