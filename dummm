@@ -100,3 +100,57 @@ private String getFormattedP1(String p1, String p2) {
     }
     return p1.equals("0") ? "" : p1; // Replace "0" with empty for space padding
 }
+
+
+
+__________________________
+
+private Acst534pModel reformatModel(Acst534pModel inputModel) {
+    Acst534pModel outputModel = new Acst534pModel();
+
+    // 4G Fields
+    outputModel.setMtn4g(reformatToSize(inputModel.getMtn4g(), 10, " ", false));
+    outputModel.setLnOfSvcIdNoP1Bkp4g(reformatP1P2(inputModel.getLnOfSvcIdNoP1Bkp4g(), inputModel.getLnOfSvcIdNoP2Bkp4g(), 8, true));
+    outputModel.setLnOfSvcIdNoP2Bkp4g(reformatP1P2(inputModel.getLnOfSvcIdNoP1Bkp4g(), inputModel.getLnOfSvcIdNoP2Bkp4g(), 18, false));
+    outputModel.setConcateP1P24g(outputModel.getLnOfSvcIdNoP1Bkp4g() + outputModel.getLnOfSvcIdNoP2Bkp4g());
+
+    outputModel.setDeviceIdTrans4g(reformatToSize(inputModel.getDeviceIdTrans4g(), 20, " ", true));
+    outputModel.setDeviceIdInfo4g(reformatToSize(inputModel.getDeviceIdInfo4g(), 20, " ", false));
+
+    // 5G Fields
+    outputModel.setMtn5g(reformatToSize(inputModel.getMtn5g(), 10, " ", false));
+    outputModel.setLnOfSvcIdNoP15g(reformatP1P2(inputModel.getLnOfSvcIdNoP15g(), inputModel.getLnOfSvcIdNoP25g(), 8, true));
+    outputModel.setLnOfSvcIdNoP25g(reformatP1P2(inputModel.getLnOfSvcIdNoP15g(), inputModel.getLnOfSvcIdNoP25g(), 18, false));
+    outputModel.setConcateP1P25g(outputModel.getLnOfSvcIdNoP15g() + outputModel.getLnOfSvcIdNoP25g());
+
+    outputModel.setDeviceIdTrans5g(reformatToSize(inputModel.getDeviceIdTrans5g(), 20, " ", true));
+    outputModel.setDeviceIdInfo5g(reformatToSize(inputModel.getDeviceIdInfo5g(), 20, " ", false));
+
+    // Device Type
+    outputModel.setDeviceType(reformatToSize(inputModel.getDeviceType(), 3, " ", false));
+
+    return outputModel;
+}
+
+// **Single optimized method to handle P1 & P2 formatting**
+private String reformatP1P2(String p1, String p2, int size, boolean isRightPad) {
+    p1 = getValue(p1);
+    p2 = getValue(p2);
+
+    if (p1.equals("0") && p2.equals("0")) {
+        return " ".repeat(size); // If both are "0", replace with spaces
+    }
+    if (!p1.isBlank() && !p2.isBlank() && !p1.equals("0") && !p2.equals("0")) {
+        p1 += "0"; // Add "0" if both have values
+    }
+    return reformatToSize(p1.equals("0") ? "" : p1, size, " ", isRightPad);
+}
+
+// **Helper methods**
+private String getValue(String input) {
+    return (input != null) ? input.trim() : "";
+}
+
+public String reformatToSize(String str, int size, String charToReplace, boolean isRight) {
+    return isRight ? StringUtils.rightPad(str, size, charToReplace) : StringUtils.leftPad(str, size, charToReplace);
+}
