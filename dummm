@@ -154,3 +154,22 @@ private String getValue(String input) {
 public String reformatToSize(String str, int size, String charToReplace, boolean isRight) {
     return isRight ? StringUtils.rightPad(str, size, charToReplace) : StringUtils.leftPad(str, size, charToReplace);
 }
+
+______
+
+
+private String getFormattedP1(String p1, String p2, int size) {
+    if (p1.equals("0") && p2.equals("0")) {
+        return " ".repeat(size); // Replace with spaces if both are "0"
+    } else if (!p1.isBlank() && !p2.isBlank() && !p1.equals("0") && !p2.equals("0")) {
+        return p1 + "0"; // Add "0" only if both have values
+    }
+    return p1.equals("0") ? "" : p1; // Replace "0" with empty for padding
+}
+
+private String getFormattedP2(String p1, String p2, int size) {
+    if (p1.equals("0") && p2.equals("0")) {
+        return " ".repeat(size); // Replace with spaces if both are "0"
+    }
+    return p2.equals("0") ? "" : p2; // Replace "0" with empty for padding
+}
