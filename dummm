@@ -1,0 +1,35 @@
+ private Acst534pModel reformatModel(Acst534pModel inputModel) {
+        Acst534pModel outputModel = new Acst534pModel();
+        outputModel.setMtn4g(reformatToSize(getValue(inputModel.getMtn4g()), 10, " ", false));
+        outputModel.setLnOfSvcIdNoP1Bkp4g(reformatToSize(getValue(inputModel.getLnOfSvcIdNoP1Bkp4g()+ "0"), 8, " ", true));
+        outputModel.setLnOfSvcIdNoP2Bkp4g(reformatToSize(getValue(inputModel.getLnOfSvcIdNoP2Bkp4g()), 18, " ", false));
+        outputModel.setConcateP1P24g(outputModel.getLnOfSvcIdNoP1Bkp4g() + outputModel.getLnOfSvcIdNoP2Bkp4g());
+        outputModel.setDeviceIdTrans4g(reformatToSize(getValue(inputModel.getDeviceIdTrans4g()), 20, " ", true));
+        outputModel.setDeviceIdInfo4g(reformatToSize(getValue(inputModel.getDeviceIdInfo4g()), 20, " ", false));
+        outputModel.setMtn5g(reformatToSize(getValue(inputModel.getMtn5g()), 10, " ", false));
+        outputModel.setLnOfSvcIdNoP15g(reformatToSize(getValue(inputModel.getLnOfSvcIdNoP15g()+ "0"), 8, " ", true));
+        outputModel.setLnOfSvcIdNoP25g(reformatToSize(getValue(inputModel.getLnOfSvcIdNoP25g()), 18, " ", false));
+        outputModel.setConcateP1P25g(outputModel.getLnOfSvcIdNoP15g() + outputModel.getLnOfSvcIdNoP25g());
+        outputModel.setDeviceIdTrans5g(reformatToSize(getValue(inputModel.getDeviceIdTrans5g()), 20, " ", true));
+        outputModel.setDeviceIdInfo5g(reformatToSize(getValue(inputModel.getDeviceIdInfo5g()), 20, " ", false));
+        outputModel.setDeviceType(reformatToSize(getValue(inputModel.getDeviceType()), 3, " ", false));
+
+        return outputModel;
+
+    }
+
+    private String getValue(String input) {
+        return null != input ? input : "";
+    }
+
+    public String reformatToSize(String str, int size, String charToReplace, boolean isRight) {
+        if (str == null) {
+            str = "";
+        }
+        if (isRight) {
+            str = StringUtils.rightPad(str, size, charToReplace);
+        } else {
+            str = StringUtils.leftPad(str, size, charToReplace);
+        }
+        return str;
+    }
