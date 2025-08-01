@@ -1,0 +1,195 @@
+Here’s a distilled, end-to-end breakdown of what’s happening in that sequence diagram:
+
+1. OMS → BPMI
+The Order Management System (OMS) invokes the BPMI engine to kick off the “Add Line” process.
+
+
+2. BPMI → ConsumerAddLine (JBPM)
+BPMI starts the ConsumerAddLine workflow in jBPM, passing along the MLMO payload.
+
+
+3. ConsumerAddLine → MS-Provisioning
+The ConsumerAddLine process calls your provisioning microservice (MS-Provisioning), again with the MLMO payload.
+
+
+4. MS-Provisioning → RMQ/WMQ
+MS-Provisioning builds the provisioning XML and pushes it onto the message queue (RabbitMQ/WMQ).
+
+
+5. RMQ/WMQ → MTAS
+The MTAS component consumes the provisioning XML from the queue and begins processing it.
+
+
+6. MTAS → ETNI API
+MTAS calls the ETNI external API to confirm the MDN (mobile number) activation—and marks it successful.
+
+
+7. MTAS → ROS
+MTAS then calls the ROS service to update—or insert—records in the customer profile tables.
+
+
+8. ROS → Vision DB
+As part of its work, ROS writes a new row into the LN_ADDL_DVC_INFO table in Vision DB (just like the BAU path).
+
+
+9. ROS → Cassandra DB
+ROS also inserts device-or-product info into your Cassandra data store, mirroring the standard profile updates.
+
+
+10. MS-Provisioning → RMQ/WMQ (Vendor)
+MS-Provisioning generates a second XML—this time for your vendor provisioning—and pushes it back onto the same queue.
+
+
+11. RMQ/WMQ → MS-Vendor-Provisioning
+Your Vendor-Provisioning service picks up that XML and processes it (e.g. sending commands to the network vendor).
+
+
+12. MS-Vendor-Provisioning → CJCM API
+Finally, once the vendor steps complete, MS-Vendor-Provisioning calls the CJCM API to log the MDN-activation milestone as successful.
+
+
+
+
+---
+
+In a nutshell:
+
+1. OMS triggers BPMI
+
+
+2. BPMI → jBPM “Add Line”
+
+
+3. jBPM → Provisioning MS
+
+
+4. Provisioning MS → Queue (XML)
+
+
+5. Queue → MTAS → ETNI (MDN activation)
+
+
+6. MTAS → ROS → Vision DB & Cassandra
+
+
+7. Provisioning MS → Queue (vendor XML)
+
+
+8. Queue → Vendor MS → CJCM (milestone update)
+
+
+
+dis----------------
+
+Certainly! Here's a step-by-step summary of the Disconnect Line flow based on the sequence diagram:
+
+
+---
+
+🔁 High-Level Flow: Disconnect Line (MLMO Payload)
+
+
+---
+
+1. OMS → BPMI
+
+OMS initiates the disconnect process by calling BPMI.
+
+
+
+---
+
+2. BPMI → ConsumerAddLine (jBPM)
+
+BPMI invokes the ConsumerAddLine jBPM workflow with the MLMO payload for disconnect.
+
+
+
+---
+
+3. ConsumerAddLine → Ms-Provisioning
+
+jBPM (BPM layer) sends the MLMO payload to the provisioning microservice (Ms-Provisioning) to begin disconnect.
+
+
+
+---
+
+4. Ms-Provisioning → RMQ & WMQ
+
+Ms-Provisioning creates the Disconnect provisioning XML payload and pushes it to the message queue (RabbitMQ/WMQ).
+
+
+
+---
+
+5. RMQ & WMQ → MTAS
+
+MTAS picks up the provisioning XML from the queue and begins processing.
+
+
+
+---
+
+6. MTAS → ETNI API
+
+MTAS calls the ETNI API to update the deactivation of the MDN (mobile number) and marks it successful.
+
+
+
+---
+
+7. MTAS → ROS
+
+MTAS informs ROS to update the customer profile tables with disconnect details.
+
+
+
+---
+
+8. ROS → Vision DB
+
+ROS updates the record in LN_ADDL_DVC_INFO in Vision DB, similar to BAU (Business-As-Usual) updates.
+
+
+
+---
+
+9. ROS → Cassandra DB
+
+ROS updates Cassandra DB by inserting a row into mcs_or_prod.ln_addl_dvc_info, again in addition to standard profile updates.
+
+
+
+---
+
+10. Ms-Provisioning → RMQ & WMQ (Vendor Disconnect)
+
+Ms-Provisioning creates a vendor disconnect provisioning XML and pushes it to RMQ/WMQ.
+
+
+
+---
+
+11. RMQ & WMQ → Ms-Vendor-Provisioning
+
+The vendor provisioning microservice picks up and processes the vendor disconnect XML.
+
+
+
+---
+
+12. Ms-Vendor-Provisioning → CJCM API
+
+Finally, a call is made to the CJCM API to log the successful MDN deactivation milestone, similar to standard processing.
+
+
+
+---
+
+✅ Summary:
+
+The disconnect flow closely mirrors the add line flow, with the key difference being the deactivation of the MDN and updating of the same profile/device tables and APIs to reflect that disconnect. The system ensures all systems (Vision DB, Cassandra, ETNI, CJCM) are in sync about the disconnect event.
+
+Let me know if you want a visual comparison between Add Line vs Disconnect Line flows!
+
