@@ -193,3 +193,39 @@ The disconnect flow closely mirrors the add line flow, with the key difference b
 
 Let me know if you want a visual comparison between Add Line vs Disconnect Line flows!
 
+--------------------------------------------------------------------------------
+
+
+Disconnect Major Prod Issues so far we faced : 
+	1.In MTAS Request rate center tags are missing - after fix working fine ( without rate center values from OR it will be LC but from MTAS its causing and issue such as the Rate Center, wasn't successfully passed from MTAS to SPC/HSS. This resulted in the application being unable to recognize the disconnect.
+	No transaction is sent to the HSS because the Rate Center tells MTAS which HSS to provision to. With an invalid RateCenter, MTAS has no way to route to the HSS. If the RateCenter is sent correctly then the HSS will be provisioned.
+	(for this MTAS failed orders Atul request to reflow from MTAS( which we discussed with Reece yesterday)
+	Jira Ticket : CXTDT-744005,CXTDT-744011
+	
+	2.MTAS Group Info tags are missing becuase of kjar issues and BPM instances unstable we facing this kind of issue in both prod and non-prod after sometime reflow all orders are sucess and correct MTAS requestgetting populate
+	Jira ticket for this issue -  CXTDT-749031 PROD : Provisioning Failed for fresh account trying for first time - failed with line in error before switch
+	
+
+Non-prod issues	
+	 1.CUSTOMER / MDN CURRENT DEVICE NOT FOUND
+		initially we faced this validation error because of our lnaddldvcinfo data has phoneTypCd is by default 'V' which inserted while provisioning after discussion the default "V" is changed to empty space.
+	 2.Disconnects was failed due to absense of required indicators deviceId,deviceIdTyp 
+		Short desc: During family talk Disconnect we are unable to get the deviceId and deviceIdType from the mentioned tables customerDvcProvInfo, custDvcEqpTransByD14Info, custDvcEqpTransByMtnInfo as for family talk activation as per the requirement we should insert data only in lnAddlDvcInfo. Now to handle this,
+
+		Fix we made: In COS we are inserting ordLnItem table with deviceId as VRD and deviceIdType as FMTLK which are family talk indicators
+		MR is raised - https://gitlab.verizon.com/B6VV_DVSV/cancel-order-service/-/merge_requests/29154
+	
+	3.Duplicate insertion happend in cassandra because vision data pop it throws (ROW NOT IN TABLE: LN_ADDL_DVC_INFO)
+		short desc for activation we are sending swActvTmstamp and lnDvcProvTs which is not matching causing vision CPF feed causing duplicated in Cassandra
+		because we are sending (lnAddlDvcInfoModel.swActvTmstamp = commonProperties?.fulfillTmstamp lnAddlDvcInfoModel.lnDvcProvTs = localObject?.currentTmstamp)
+		it makes minor differnce in tmstamp which also correct but in vision the data populate logic is mistakenly takes same value(swActvTmstamp) for swActvTmstamp and lnDvcProvTs when it tries update from vision cassandra the data its considerd and it inserts new row instead of update same MDN in lnaddldvcinfo
+		
+		fix we made we are sending same currentTmstampto both columns
+		https://gitlab.verizon.com/B6VV_DVSV/record_order_service/-/merge_requests/16466/diffs
+		similiar kind of issue we faced in disconnect also 
+		https://gitlab.verizon.com/B6VV_DVSV/record_order_service/-/merge_requests/16476
+	
+
+
+	
+
