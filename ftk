@@ -227,5 +227,65 @@ Non-prod issues
 	
 
 
-	
+	Here is your content with only grammatical corrections applied:
+
+
+---
+
+Disconnect Major Prod Issues So Far We Faced:
+
+1. In MTAS, Request Rate Center Tags Were Missing
+After the fix, it is working fine. Without rate center values from OR, it defaults to LC. However, from MTAS, it caused an issue such as the Rate Center not being successfully passed from MTAS to SPC/HSS. This resulted in the application being unable to recognize the disconnect.
+No transaction is sent to the HSS because the Rate Center tells MTAS which HSS to provision to. With an invalid Rate Center, MTAS has no way to route to the HSS. If the Rate Center is sent correctly, then the HSS will be provisioned.
+(For this, MTAS failed orders. Atul requested to reflow from MTAS, which we discussed with Reece yesterday.)
+Jira Tickets: CXTDT-744005, CXTDT-744011
+
+
+2. MTAS Group Info Tags Were Missing
+Due to KJAR issues and unstable BPM instances, we faced this issue in both prod and non-prod. After some time, reflowing all orders was successful and correct MTAS requests were populated.
+Jira Ticket: CXTDT-749031
+PROD: Provisioning failed for a fresh account trying for the first time – failed with line in error before switch.
+
+
+
+
+---
+
+Non-Prod Issues
+
+1. CUSTOMER / MDN CURRENT DEVICE NOT FOUND
+Initially, we faced this validation error because our lnAddlDvcInfo data had phoneTypCd as default 'V', which was inserted during provisioning. After discussion, the default "V" was changed to an empty space.
+
+
+2. Disconnects Failed Due to Absence of Required Indicators: deviceId, deviceIdTyp
+Short Description: During family talk disconnects, we were unable to get the deviceId and deviceIdType from the mentioned tables: customerDvcProvInfo, custDvcEqpTransByD14Info, custDvcEqpTransByMtnInfo. For family talk activation, as per the requirement, we should insert data only into lnAddlDvcInfo.
+Fix Made: In COS, we are inserting into the ordLnItem table with deviceId as VRD and deviceIdType as FMTLK, which are family talk indicators.
+MR Raised: https://gitlab.verizon.com/B6VV_DVSV/cancel-order-service/-/merge_requests/29154
+
+
+3. Duplicate Insertion Happened in Cassandra Due to Vision Data Pop – Error: ROW NOT IN TABLE: LN_ADDL_DVC_INFO
+Short Description:
+For activation, we were sending swActvTmstamp and lnDvcProvTs which were not matching, causing Vision CPF feed to result in duplication in Cassandra.
+This happened because we were sending:
+
+lnAddlDvcInfoModel.swActvTmstamp = commonProperties?.fulfillTmstamp
+
+lnAddlDvcInfoModel.lnDvcProvTs = localObject?.currentTmstamp
+The minor difference in timestamps (though technically correct) caused Vision's data populate logic to mistakenly treat them as separate rows. As a result, it inserted a new row instead of updating the existing MDN in lnAddlDvcInfo.
+Fix Made: We are now sending the same currentTmstamp to both columns.
+
+https://gitlab.verizon.com/B6VV_DVSV/record_order_service/-/merge_requests/16466/diffs
+A similar issue was faced during disconnect as well:
+
+https://gitlab.verizon.com/B6VV_DVSV/record_order_service/-/merge_requests/16476
+
+
+
+
+
+---
+
+Let me know if you want this restructured into a presentation-friendly format or one-pager summary.
+
+
 
