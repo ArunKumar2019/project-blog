@@ -1,3 +1,17 @@
+Map<String, String> latestMap = new HashMap<>();
+
+for (Row row : resultSet) {
+    String keyType = row.getString("key_type");
+    String keyValue = row.getString("key_value");
+
+    latestMap.putIfAbsent(keyType, keyValue);
+}
+
+
+
+
+
+
 SELECT eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID,       
        eq.EO_STAT_CD, eq.DEVICE_CHG_RSN_CD, eq.EO_STAT_RSN_CD,    
        eq.EO_STAT_EFF_TMSTMP, eq.DB_TMSTAMP                 
