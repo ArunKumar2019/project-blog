@@ -1,11 +1,21 @@
-Map<String, String> latestMap = new HashMap<>();
+%ftrAccountInfoList
+    .groupBy {
+        it.keyType
+    }
+    .collect { k, v -> 
+        def valid = v.findAll { it != null && it.effTmstamp != null }
+        if (valid.size() == 0) return null
 
-for (Row row : resultSet) {
-    String keyType = row.getString("key_type");
-    String keyValue = row.getString("key_value");
+        def recent = valid.max { it.effTmstamp }
 
-    latestMap.putIfAbsent(keyType, keyValue);
-}
+        [
+            keyType: recent.keyType,
+            keyValue: recent.keyValue
+        ]
+    }
+    .findAll { it != null }
+
+
 new......
 %ftrAccountInfo
     .groupBy { it.keyType }
