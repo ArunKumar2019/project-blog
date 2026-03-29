@@ -10,6 +10,21 @@ for (Row row : resultSet) {
 
 
 
+%ftrAccountInfo
+    .groupBy { it.keyType }
+    .collect { k, v -> 
+        def valid = v.findAll { it.effTmstamp != null }
+        if (!valid) return null
+
+        def latest = valid.max { it.effTmstamp }
+
+        [
+            keyType    : latest.keyType,
+            keyValue   : latest.keyValue,
+            effTmstamp : latest.effTmstamp
+        ]
+    }
+    .findAll { it != null }
 
 
 SELECT eq.MTN, eq.EQ_ORD_NO, eq.NETACE_LOC_ID,       
