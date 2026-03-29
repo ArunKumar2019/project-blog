@@ -6,6 +6,24 @@ for (Row row : resultSet) {
 
     latestMap.putIfAbsent(keyType, keyValue);
 }
+new......
+%ftrAccountInfo
+    .groupBy { it.keyType }
+    .collect { k, v ->
+        v.findAll { it.effTmstamp }   // null-safe filter
+         ?.max { it.effTmstamp }
+    }
+    .findAll { it != null }
+    .collect {
+        [
+            keyType    : it.keyType,
+            keyValue   : it.keyValue,
+            effTmstamp : it.effTmstamp
+        ]
+    }
+
+
+.......
 
 
 
